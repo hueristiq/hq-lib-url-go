@@ -1,3 +1,7 @@
+//go:build ignore
+
+// Command unicodes regenerates the allowed Unicode character ranges. It is invoked via
+// go:generate (see the module root) and is excluded from normal builds.
 package main
 
 import (
