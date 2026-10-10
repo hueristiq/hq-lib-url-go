@@ -48,9 +48,9 @@ func Benchmark_Extractor_CompileRegexWithScheme(b *testing.B) {
 }
 
 // Benchmark_Extractor_FindAllString measures the match hot path: scanning a realistic
-// mixed corpus with the host-requiring (Relaxed) regex.
+// mixed corpus with the host-requiring regex.
 func Benchmark_Extractor_FindAllString(b *testing.B) {
-	regex := extractor.New(extractor.Relaxed()).CompileRegex()
+	regex := extractor.New(extractor.WithHost()).CompileRegex()
 
 	b.ReportAllocs()
 

@@ -19,10 +19,10 @@
 
 ## Features
 
-- **URL Extraction:** Composed, longest-match regular expressions that find fully-qualified URLs, scheme-less host URLs, email addresses, and relative paths in any text — with `Strict()` and `Relaxed()` presets inspired by [xurls](https://github.com/mvdan/xurls), plus fine-grained functional options and exported pattern building blocks.
+- **URL Extraction:** Composed, longest-match regular expressions that find fully-qualified URLs, scheme-less host URLs, email addresses, and relative paths in any text, plus fine-grained functional options and exported pattern building blocks.
 - **URL Parsing:** Extends [`net/url`](https://pkg.go.dev/net/url) with a decomposition of the host into subdomain, SLD, and TLD, matched exactly against official and pseudo TLD lists — including multi-label public suffixes such as `co.uk` — via binary search.
-- **Key Access:** [unfurl](https://github.com/tomnomnom/unfurl)-style component lookup by name (`scheme`, `host`, `port`, `subdomain`, `sld`, `tld`, `apex`, `path`, `query`, `fragment`, and more).
-- **Normalization:** [urlx](https://github.com/goware/urlx)-style canonicalization — lowercase scheme and host, default-port removal, dot-segment removal, sorted query parameters — plus per-host scheme inference with `InferScheme`.
+- **Key Access:** Component lookup by name (`scheme`, `host`, `port`, `subdomain`, `sld`, `tld`, `apex`, `path`, `query`, `fragment`, and more).
+- **Normalization:** Canonicalization — lowercase scheme and host, default-port removal, dot-segment removal, sorted query parameters — plus per-host scheme inference with `InferScheme`.
 - **Standard Library Only:** No third-party runtime dependencies; the `schemes`, `tlds`, and `unicodes` data packages are regenerated from public sources with `go generate`.
 
 ## Installation
@@ -46,7 +46,7 @@ import (
 
 ### Extraction
 
-The `extractor` package scans text and pulls out URLs using a composed regular expression. Configure it with functional options — here the `Strict()` preset, which requires a scheme:
+The `extractor` package scans text and pulls out URLs using a composed regular expression. Configure it with functional options — here `WithScheme()`, which requires a scheme:
 
 ```go
 package main
@@ -58,7 +58,7 @@ import (
 )
 
 func main() {
-	e := hqgourlextractor.New(hqgourlextractor.Strict())
+	e := hqgourlextractor.New(hqgourlextractor.WithScheme())
 
 	regex := e.CompileRegex()
 
@@ -76,8 +76,8 @@ func main() {
 
 Available configurations:
 
-- `Relaxed()` — everything `Strict()` matches, plus scheme-less host URLs and bare email addresses (emails land in the `relaxedEmail` subexpression).
-- `WithScheme()` / `WithHost()` — the fine-grained equivalents of `Strict()` and `Relaxed()`.
+- `WithScheme()` — require a scheme, so only fully-qualified URLs match.
+- `WithHost()` — additionally match scheme-less host URLs and bare email addresses (emails land in the `relaxedEmail` subexpression).
 - `WithSchemePattern(pattern)` / `WithHostPattern(pattern)` — restrict the scheme or host with a custom pattern, e.g.:
 
 	```go
@@ -139,7 +139,7 @@ Hosts are decomposed deterministically: IP literals get a nil `Domain`; a single
 
 ### Key Access
 
-`URL.Key` returns a single component by name, unfurl-style:
+`URL.Key` returns a single component by name:
 
 ```go
 package main

@@ -45,8 +45,8 @@
 //
 // [URL.Key] returns a single component by name — "scheme", "user", "pass", "host",
 // "port", "domain", "subdomain", "sld" (alias "root"), "tld", "apex", "path", "query",
-// or "fragment" — in the spirit of unfurl's key-based decomposition. [Domain.Apex]
-// returns the apex domain, and [Domain.String] reconstructs the full domain.
+// or "fragment". [Domain.Apex] returns the apex domain, and [Domain.String]
+// reconstructs the full domain.
 //
 // # Normalization
 //

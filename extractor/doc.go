@@ -17,10 +17,6 @@
 //   - [WithHostPattern] restricts the host with a custom pattern.
 //   - With no options, relative paths (e.g. "/docs/guide") match too.
 //
-// The [Strict] and [Relaxed] presets, modeled on xurls
-// (https://github.com/mvdan/xurls), are shorthand for [WithScheme] and [WithHost]
-// respectively.
-//
 // # Patterns
 //
 // The building blocks of the composed pattern are exported for reuse in custom

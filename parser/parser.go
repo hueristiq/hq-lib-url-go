@@ -25,8 +25,7 @@ type URL struct {
 	Domain *Domain
 }
 
-// Key returns the URL component identified by key, unfurl-style
-// (https://github.com/tomnomnom/unfurl).
+// Key returns the URL component identified by key.
 //
 // The supported keys are:
 //
@@ -103,8 +102,7 @@ func (u *URL) Key(key string) (value string) {
 	return
 }
 
-// Normalize rewrites the URL in place into a canonical form, inspired by the
-// normalization behavior of urlx (https://github.com/goware/urlx):
+// Normalize rewrites the URL in place into a canonical form:
 //
 //   - the scheme is lowercased;
 //   - the hostname is lowercased and a single trailing root dot is trimmed;
@@ -526,8 +524,7 @@ func WithTLDs(list ...string) (f OptionFunc) {
 	}
 }
 
-// InferScheme guesses a scheme for a host that is missing one, inspired by the scheme
-// inference of urlx (https://github.com/goware/urlx).
+// InferScheme guesses a scheme for a host that is missing one.
 //
 // It returns "http" for local targets — "localhost" and any *.localhost, *.local,
 // *.test, or *.invalid name, as well as loopback, private, link-local, and unspecified

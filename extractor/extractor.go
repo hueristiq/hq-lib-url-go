@@ -416,36 +416,6 @@ func WithHostPattern(pattern string) (f OptionFunc) {
 	}
 }
 
-// Strict returns an OptionFunc that restricts extraction to URLs carrying a scheme,
-// inspired by the Strict preset of xurls (https://github.com/mvdan/xurls).
-//
-// It is equivalent to [WithScheme]: any syntactically valid scheme matches, not just the
-// known ones. Combine it with [WithSchemePattern] and [ExtractorKnownSchemePattern] to
-// restrict matches to officially recognized schemes instead.
-//
-// Returns:
-//   - f (OptionFunc): a function that configures the Extractor to require schemes.
-func Strict() (f OptionFunc) {
-	return func(extractor *Extractor) {
-		extractor.SetScheme()
-	}
-}
-
-// Relaxed returns an OptionFunc that matches everything [Strict] matches, plus
-// scheme-less URLs with a host and bare email addresses, inspired by the Relaxed preset
-// of xurls (https://github.com/mvdan/xurls).
-//
-// It is equivalent to [WithHost]. Email addresses match the "relaxedEmail"
-// subexpression, which can be used to filter them as needed.
-//
-// Returns:
-//   - f (OptionFunc): a function that configures the Extractor to require hosts.
-func Relaxed() (f OptionFunc) {
-	return func(extractor *Extractor) {
-		extractor.SetHost()
-	}
-}
-
 // anyOf is a helper function that constructs a non-capturing regex pattern from a list of strings.
 // It joins the provided strings with a "|" (alternation) operator and escapes each string to ensure
 // special regex characters are treated literally.

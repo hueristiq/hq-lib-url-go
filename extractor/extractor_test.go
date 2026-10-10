@@ -262,18 +262,6 @@ func Test_Extractor_CompileRegex(t *testing.T) {
 			[]extractor.OptionFunc{extractor.WithHostPattern(`(?:(?:\w+[.])*example\.com` + extractor.ExtractorPortOptionalPattern + `)`)},
 			wantWithHostPattern,
 		},
-		{
-			// The Strict preset must behave exactly like WithScheme.
-			"Strict preset",
-			[]extractor.OptionFunc{extractor.Strict()},
-			wantWithScheme,
-		},
-		{
-			// The Relaxed preset must behave exactly like WithHost.
-			"Relaxed preset",
-			[]extractor.OptionFunc{extractor.Relaxed()},
-			wantWithHost,
-		},
 	}
 
 	for _, tt := range tests {
