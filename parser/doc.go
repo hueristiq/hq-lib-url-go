@@ -1,40 +1,59 @@
-// Package parser provides advanced URL parsing capabilities by extending the standard net/url package
-// with additional domain extraction functionality.
+// Package parser parses raw URL strings into structured values that extend the standard
+// net/url package with a decomposition of the host's domain into subdomain, second-level
+// domain (SLD), and top-level domain (TLD).
 //
-// This package decomposes a URL’s host component into three primary parts:
-//   - Subdomain (e.g., "www" in "www.example.com")
-//   - Second-Level Domain (SLD, e.g., "example" in "www.example.com")
-//   - Top-Level Domain (TLD, e.g., "com" in "www.example.com")
+// It suits work that needs more from a URL than net/url exposes directly — crawlers,
+// reconnaissance tools, and log analyzers that group or filter by registrable domain —
+// where embedding [net/url.URL] keeps the result compatible with existing HTTP libraries.
 //
-// The custom URL type embeds net/url.URL so that it integrates seamlessly with existing HTTP libraries,
-// while the additional Domain struct holds the parsed components. The Parser type offers methods to parse
-// raw URL strings into this extended URL struct. It also supports applying a default scheme when missing,
-// and uses a suffix array for efficient TLD lookups.
+// # Parsing
 //
-// Example Usage:
+// [New] returns a [Parser]; [Parser.Parse] converts a raw URL string into a [URL]. The
+// behavior is set through functional options:
 //
-//	package main
+//   - [WithDefaultScheme] applies a scheme to URLs that lack one, so "example.com/path"
+//     parses as a host plus path instead of a relative reference.
+//   - [WithTLDs] replaces the recognized TLD set — the union of the official and pseudo
+//     TLD lists from the tlds package by default.
 //
-//	import (
-//	    "fmt"
-//	    "github.com/hueristiq/hq-go-url/parser"
-//	)
+// # Domain decomposition
 //
-//	func main() {
-//	    // Create a new parser with a default scheme of "https".
-//	    p := parser.NewParser(parser.WithDefaultScheme("https"))
+// The host lands in [Domain] as follows:
 //
-//	    // Parse a raw URL string without a scheme.
-//	    parsedURL, err := p.Parse("www.example.com")
-//	    if err != nil {
-//	        fmt.Println("Error parsing URL:", err)
-//	        return
-//	    }
+//   - An IP literal host (IPv4 or IPv6) yields a nil Domain.
+//   - A URL without a host (a relative reference or an opaque URI) yields a non-nil but
+//     zero Domain.
+//   - A single-label host (e.g. "localhost") lands wholly in
+//     [Domain.SecondLevelDomain], even if the label happens to be a known TLD.
+//   - When no suffix of the host is a recognized TLD, the host is decomposed
+//     positionally — the labels before the last two land in [Domain.Subdomain], the
+//     second to last label lands in [Domain.SecondLevelDomain] — and
+//     [Domain.TopLevelDomain] is left empty: the last label occupies the TLD position
+//     but is not recognized.
+//   - When the entire host is a recognized suffix (e.g. "co.uk"), it lands wholly in
+//     [Domain.TopLevelDomain].
+//   - Otherwise the longest recognized suffix lands in [Domain.TopLevelDomain], the
+//     label before it in [Domain.SecondLevelDomain], and the remaining labels in
+//     [Domain.Subdomain].
 //
-//	    // Print the reconstructed domain.
-//	    fmt.Println("Domain:", parsedURL.Domain.String())
-//	}
+// Matching is case-insensitive and ignores a trailing root dot; the Domain components
+// are stored lowercase. TLD lookup is an exact match against a sorted list via binary
+// search, so it never depends on the list's source order and never confuses a substring
+// of a TLD with the TLD itself.
 //
-// References:
-// - net/url package documentation: https://pkg.go.dev/net/url
+// # Key access
+//
+// [URL.Key] returns a single component by name — "scheme", "user", "pass", "host",
+// "port", "domain", "subdomain", "sld" (alias "root"), "tld", "apex", "path", "query",
+// or "fragment" — in the spirit of unfurl's key-based decomposition. [Domain.Apex]
+// returns the apex domain, and [Domain.String] reconstructs the full domain.
+//
+// # Normalization
+//
+// [URL.Normalize] rewrites a parsed URL into a canonical form: lowercase scheme and
+// host, no trailing root dot, no default port, dot segments removed from the path, and
+// query parameters sorted by key. [InferScheme] guesses a scheme for a host that is
+// missing one — "http" for local targets, "https" otherwise.
+//
+// The implementation relies on the Go standard library only.
 package parser
