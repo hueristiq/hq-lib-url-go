@@ -1,25 +1,20 @@
-// Package schemes provides categorized lists of URL schemes, including official IANA-assigned schemes,
-// commonly used unofficial schemes, and schemes that do not require an authority component.
+// Package schemes provides categorized lists of URL schemes: official IANA-assigned
+// schemes, commonly used unofficial schemes, and schemes that do not require an
+// authority component.
 //
-// URL schemes define how a resource should be accessed. They serve as the prefix in URLs, determining the
-// protocol to be used when retrieving or interacting with a resource. This package helps with processing,
-// validating, and handling different types of schemes in web applications, networking tools, and other
-// software components.
+// It suits work that must recognize or validate the scheme of a URL — crawlers,
+// extractors, and link classifiers — where a maintained, categorized list is more
+// useful than a hand-written one.
 //
-// Example Usage:
+// # Lists
 //
-//	package main
+//   - [Official] holds every IANA-assigned scheme and is regenerated periodically from
+//     the IANA registry.
+//   - [Unofficial] holds widely used schemes that are not registered with IANA.
+//   - [NoAuthority] holds schemes followed by ":" instead of "//", such as "mailto".
 //
-//	import (
-//	    "fmt"
-//	    "github.com/hueristiq/hq-go-url/schemes"
-//	)
+// All lists are sorted. The official list is generated from the IANA registry; see the
+// module root for the go:generate directives.
 //
-//	func main() {
-//	    fmt.Println("Supported schemes:", schemes.Official)
-//	}
-//
-// References:
-// - IANA Registry: https://www.iana.org/assignments/uri-schemes/uri-schemes.xhtml
-// - Wikipedia URI Schemes: https://en.wikipedia.org/wiki/List_of_URI_schemes
+// The implementation relies on the Go standard library only.
 package schemes

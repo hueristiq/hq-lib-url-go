@@ -2,249 +2,97 @@ package extractor
 
 import (
 	"regexp"
+	"slices"
 	"strings"
-	"unicode/utf8"
 
-	"github.com/hueristiq/hq-go-url/schemes"
-	"github.com/hueristiq/hq-go-url/tlds"
-	"github.com/hueristiq/hq-go-url/unicodes"
+	"github.com/hueristiq/hq-lib-url-go/schemes"
+	"github.com/hueristiq/hq-lib-url-go/tlds"
+	"github.com/hueristiq/hq-lib-url-go/unicodes"
 )
 
-// Extractor configures the URL extraction process.
-// It provides options for controlling whether URL schemes and hosts are mandatory, and allows custom
-// regular expression patterns to be specified for these components. This allows fine-grained control over
-// the types of URLs that are extracted from text.
-//
-// Fields:
-//   - withScheme: A boolean flag indicating if a URL scheme (e.g., "http") is required in extracted URLs.
-//   - withSchemePattern: A custom regular expression pattern to match URL schemes.
-//   - withHost: A boolean flag indicating if a URL host (e.g., domain) is required in extracted URLs.
-//   - withHostPattern: A custom regular expression pattern to match URL hosts.
-type Extractor struct {
-	withScheme        bool
-	withSchemePattern string
-	withHost          bool
-	withHostPattern   string
-}
-
-// CompileRegex constructs and compiles a regular expression pattern for URL extraction.
-// It builds a composite regex pattern that can capture various URL forms, taking into account user
-// configuration for required schemes or hosts, as well as any custom patterns provided.
-// The generated pattern can match fully-qualified URLs (with schemes and hosts), email addresses,
-// and relative URLs, depending on the configuration.
-//
-// Returns:
-//   - regex (*regexp.Regexp): A compiled regular expression object that can be used to extract URLs from text.
-//
-// Example:
-//
-//	// Create an extractor that requires URL schemes.
-//	extractor := New(WithScheme())
-//	regex := extractor.CompileRegex()
-//	urls := regex.FindAllString(text, -1) // Extracts URLs from the provided text.
-func (e *Extractor) CompileRegex() (regex *regexp.Regexp) {
-	schemePattern := ExtractorSchemePattern
-
-	if e.withScheme && e.withSchemePattern != "" {
-		schemePattern = e.withSchemePattern
-	}
-
-	// Separate ASCII TLDs (top-level domains) from Unicode TLDs for the regular expression.
-	// We do this by checking for the first TLD that starts with a rune >= utf8.RuneSelf.
-	var asciiTLDs, unicodeTLDs []string
-
-	for i, tld := range tlds.Official {
-		if tld[0] >= utf8.RuneSelf {
-			asciiTLDs = tlds.Official[:i:i]
-			unicodeTLDs = tlds.Official[i:]
-
-			break
-		}
-	}
-
-	// Define the punycode pattern used for internationalized domain names.
-	punycode := `xn--[a-z0-9-]+`
-
-	// knownTLDPattern combines punycode, known ASCII TLDs, pseudo TLDs (like .local, .onion),
-	// and the set of unicode TLDs into a single pattern. We add a word boundary (\b) for ASCII TLDs
-	// and keep the pattern case-insensitive with `(?i)`.
-	knownTLDPattern := `(?:(?i)` + punycode + `|` + anyOf(append(asciiTLDs, tlds.Pseudo...)...) + `\b|` + anyOf(unicodeTLDs...) + `)`
-
-	// domainPattern matches typical domains by combining subdomains, known TLDs, or 'localhost'.
-	domainPattern := `(?:` + _subdomainPattern + knownTLDPattern + `|localhost)`
-
-	// Host patterns:
-	//   - hostWithoutPortPattern: matches domain, IPv6 (in brackets), or bare IPv4.
-	//   - hostWithPortOptionalPattern: hostWithoutPort plus an optional port.
-	hostWithoutPortPattern := `(?:` + domainPattern + `|\[` + ExtractorIPv6Pattern + `\]|\b` + ExtractorIPv4Pattern + `\b)`
-	hostWithPortOptionalPattern := `(?:` + hostWithoutPortPattern + ExtractorPortOptionalPattern + `)`
-
-	// If a custom host pattern was provided, use it.
-	if e.withHost && e.withHostPattern != "" {
-		hostWithPortOptionalPattern = e.withHostPattern
-	}
-
-	// _IAuthorityPattern: user info + host:port
-	_IAuthorityPattern := `(?:` + _IUserInfoOptionalPattern + hostWithPortOptionalPattern + `)`
-
-	// _IAuthorityOptionalPattern allows an optional authority.
-	_IAuthorityOptionalPattern := _IAuthorityPattern + `?`
-
-	// Patterns for the URL forms:
-	//   - webURL:        has authority + optional path
-	//   - email:         simplified email pattern, capturing user@host
-	//   - URLsWithSchemePattern: fully supports an optional or mandatory authority, with path
-	webURL := _IAuthorityPattern + `(?:/` + pathCont + `|/)?`
-	email := `(?P<relaxedEmail>[a-zA-Z0-9._%\-+]+@` + hostWithPortOptionalPattern + `)`
-	URLsWithSchemePattern := schemePattern + _IAuthorityOptionalPattern + pathCont
-
-	// If a custom host pattern is provided, ensure we require the authority.
-	if e.withHostPattern != "" {
-		URLsWithSchemePattern = schemePattern + _IAuthorityPattern + `(?:/` + pathCont + `|/)?`
-	}
-
-	// URLsWithHostPattern tries to match either web-like URLs or emails
-	// without a specific scheme.
-	URLsWithHostPattern := webURL + `|` + email
-
-	// RelativeURLsPattern captures relative paths (e.g. /path/to/resource or
-	// something/like/this).
-	RelativeURLsPattern := `(\/[\w\/?=&#.-]*)|([\w\/?=&#.-]+?(?:\/[\w\/?=&#.-]+)+)`
-
-	// Build the final combined pattern depending on the configuration:
-	var pattern string
-
-	switch {
-	case e.withScheme:
-		pattern = URLsWithSchemePattern
-	case e.withHost:
-		pattern = URLsWithSchemePattern + `|` + URLsWithHostPattern
-	default:
-		pattern = URLsWithSchemePattern + `|` + URLsWithHostPattern + `|` + RelativeURLsPattern
-	}
-
-	// Compiling the final regex pattern.
-	regex = regexp.MustCompile(pattern)
-
-	// Ensures the longest possible match is found.
-	regex.Longest()
-
-	return
-}
-
-// SetScheme sets the Extractor to require URL schemes during extraction.
-// It marks the withScheme flag as true.
-func (e *Extractor) SetScheme() {
-	e.withScheme = true
-}
-
-// SetSchemePattern sets a custom regular expression pattern for matching URL schemes.
-// It also marks the Extractor as requiring a scheme.
-//
-// Parameter:
-//   - pattern (string): A regex pattern to match URL schemes.
-func (e *Extractor) SetSchemePattern(pattern string) {
-	e.SetScheme()
-
-	e.withSchemePattern = pattern
-}
-
-// WithHost sets the Extractor to require URL hosts during extraction.
-// It marks the withHost flag as true.
-func (e *Extractor) SetHost() {
-	e.withHost = true
-}
-
-// WithHostPattern sets a custom regular expression pattern for matching URL hosts.
-// It also marks the Extractor as requiring a host.
-//
-// Parameter:
-//   - pattern (string): A regex pattern to match URL hosts.
-func (e *Extractor) SetHostPattern(pattern string) {
-	e.SetHost()
-
-	e.withHostPattern = pattern
-}
-
-// OptionFunc defines a functional option for configuring an Extractor instance.
-// It allows the caller to pass in configuration functions that modify the Extractor's
-// settings (e.g., requiring a scheme or host, or providing custom regex patterns).
-type OptionFunc func(extractor *Extractor)
-
-// Interface defines the behavior that an Extractor must implement.
-// It requires the implementation of a method to compile a regular expression for URL extraction.
-type Interface interface {
-	CompileRegex() (regex *regexp.Regexp)
-}
-
 const (
-	// _alphaCharacterSet defines the set of alphabetical characters.
-	_alphaCharacterSet = `a-zA-Z`
+	// alphaCharacterSet defines the set of alphabetical characters.
+	alphaCharacterSet = `a-zA-Z`
 
-	// _digitCHaracterSet defines the set of digit characters.
-	_digitCHaracterSet = `0-9`
+	// digitCharacterSet defines the set of digit characters.
+	digitCharacterSet = `0-9`
 
-	// _IUnreservedCharacterSet is the set of unreserved characters allowed in URL components,
-	// including letters, digits, hyphens, dots, underscores, tildes, and additional allowed Unicode characters.
-	_IUnreservedCharacterSet = _alphaCharacterSet + _digitCHaracterSet + `\-\._~` + unicodes.AllowedUcsChar
+	// iUnreservedCharacterSet is the set of unreserved characters allowed in URL
+	// components, including letters, digits, hyphens, dots, underscores, tildes, and
+	// additional allowed Unicode characters.
+	iUnreservedCharacterSet = alphaCharacterSet + digitCharacterSet + `\-\._~` + unicodes.AllowedUcsChar
 
-	// _IEndUnreservedCharacterSet is similar to _IUnreservedCharacterSet but excludes certain punctuation.
-	_IEndUnreservedCharacterSet = _alphaCharacterSet + _digitCHaracterSet + `\-_~` + unicodes.AllowedUcsCharMinusPunc
+	// iEndUnreservedCharacterSet is similar to iUnreservedCharacterSet but excludes the
+	// dot, so a URL component does not end with punctuation.
+	iEndUnreservedCharacterSet = alphaCharacterSet + digitCharacterSet + `\-_~` + unicodes.AllowedUcsCharMinusPunc
 
-	// _subDelimsCharacterSet defines the set of sub-delimiter characters allowed in URL components.
-	_subDelimsCharacterSet = `!\$&'\(\)\*\+,;=`
+	// subDelimsCharacterSet defines the set of sub-delimiter characters allowed in URL
+	// components.
+	subDelimsCharacterSet = `!\$&'\(\)\*\+,;=`
 
-	// _endSubDelimsCharacterSet defines a subset of sub-delimiters typically allowed at the end of URL components.
-	_endSubDelimsCharacterSet = `\$&\+=`
+	// endSubDelimsCharacterSet defines a subset of sub-delimiters typically allowed at
+	// the end of URL components.
+	endSubDelimsCharacterSet = `\$&\+=`
 
-	// _pctEncodingPattern defines the pattern for percent-encoded characters.
-	_pctEncodingPattern = `%[0-9a-fA-F]{2}`
+	// pctEncodingPattern defines the pattern for percent-encoded characters.
+	pctEncodingPattern = `%[0-9a-fA-F]{2}`
 
-	// _IUserInfoPattern matches user information (e.g., username:password) in a URL.
-	// It allows unreserved characters, sub-delimiters, colons, or percent-encoded characters, followed by an "@".
-	_IUserInfoPattern = `(?:(?:[` + _IUnreservedCharacterSet + _subDelimsCharacterSet + `:]|` + _pctEncodingPattern + `)+@)`
+	// iUserInfoPattern matches user information (e.g., username:password) in a URL. It
+	// allows unreserved characters, sub-delimiters, colons, or percent-encoded
+	// characters, followed by an "@".
+	iUserInfoPattern = `(?:(?:[` + iUnreservedCharacterSet + subDelimsCharacterSet + `:]|` + pctEncodingPattern + `)+@)`
 
-	// _IUserInfoOptionalPattern makes the user information optional.
-	_IUserInfoOptionalPattern = _IUserInfoPattern + `?`
+	// iUserInfoOptionalPattern makes the user information optional.
+	iUserInfoOptionalPattern = iUserInfoPattern + `?`
 
-	// midIPathSegmentChar defines the set of characters allowed in the middle of a URL path segment.
-	midIPathSegmentChar = _IUnreservedCharacterSet + `%` + _subDelimsCharacterSet + `:@`
+	// midIPathSegmentCharacterSet defines the set of characters allowed in the middle of
+	// a URL path segment.
+	midIPathSegmentCharacterSet = iUnreservedCharacterSet + `%` + subDelimsCharacterSet + `:@`
 
-	// endIPathSegmentChar defines the set of characters allowed at the end of a URL path segment.
-	endIPathSegmentChar = _IEndUnreservedCharacterSet + `%` + _endSubDelimsCharacterSet
+	// endIPathSegmentCharacterSet defines the set of characters allowed at the end of a
+	// URL path segment.
+	endIPathSegmentCharacterSet = iEndUnreservedCharacterSet + `%` + endSubDelimsCharacterSet
 
-	// _IPrivateCharacters defines Unicode private use areas that are allowed in URLs.
-	_IPrivateCharacters = `\x{E000}-\x{F8FF}\x{F0000}-\x{FFFFD}\x{100000}-\x{10FFFD}`
+	// iPrivateCharacters defines Unicode private use areas that are allowed in URLs.
+	iPrivateCharacters = `\x{E000}-\x{F8FF}\x{F0000}-\x{FFFFD}\x{100000}-\x{10FFFD}`
 
-	// midIChar is the set of characters allowed in the middle of a URL component.
-	midIChar = `/?#\\` + midIPathSegmentChar + _IPrivateCharacters
+	// midICharacterSet is the set of characters allowed in the middle of a URL
+	// component.
+	midICharacterSet = `/?#\\` + midIPathSegmentCharacterSet + iPrivateCharacters
 
-	// endIChar is the set of characters allowed at the end of a URL component.
-	endIChar = `/#` + endIPathSegmentChar + _IPrivateCharacters
+	// endICharacterSet is the set of characters allowed at the end of a URL component.
+	endICharacterSet = `/#` + endIPathSegmentCharacterSet + iPrivateCharacters
 
-	// wellParen, wellBrack, and wellBrace match well-formed nested parentheses, brackets, and braces,
-	// respectively. wellAll combines these into a single pattern.
-	wellParen = `\((?:[` + midIChar + `]|\([` + midIChar + `]*\))*\)`
-	wellBrack = `\[(?:[` + midIChar + `]|\[[` + midIChar + `]*\])*\]`
-	wellBrace = `\{(?:[` + midIChar + `]|\{[` + midIChar + `]*\})*\}`
-	wellAll   = wellParen + `|` + wellBrack + `|` + wellBrace
+	// wellParenPattern, wellBrackPattern, and wellBracePattern match well-formed nested
+	// parentheses, brackets, and braces, respectively. wellAllPattern combines these
+	// into a single pattern.
+	wellParenPattern = `\((?:[` + midICharacterSet + `]|\([` + midICharacterSet + `]*\))*\)`
+	wellBrackPattern = `\[(?:[` + midICharacterSet + `]|\[[` + midICharacterSet + `]*\])*\]`
+	wellBracePattern = `\{(?:[` + midICharacterSet + `]|\{[` + midICharacterSet + `]*\})*\}`
+	wellAllPattern   = wellParenPattern + `|` + wellBrackPattern + `|` + wellBracePattern
 
-	// pathCont defines the pattern for a URL path continuation. It matches segments composed of
-	// allowed middle characters and ensures that the path does not abruptly end with disallowed characters.
-	pathCont = `(?:[` + midIChar + `]*(?:` + wellAll + `|[` + endIChar + `]))+`
+	// pathContPattern defines the pattern for a URL path continuation. It matches
+	// segments composed of allowed middle characters and ensures that the path does not
+	// abruptly end with disallowed characters.
+	pathContPattern = `(?:[` + midICharacterSet + `]*(?:` + wellAllPattern + `|[` + endICharacterSet + `]))+`
 
-	// _letter, _mark, _number are Unicode property patterns for letters, marks, and numbers.
-	_letter = `\p{L}`
-	_mark   = `\p{M}`
-	_number = `\p{N}`
+	// letterPattern, markPattern, and numberPattern are Unicode property patterns for
+	// letters, marks, and numbers.
+	letterPattern = `\p{L}`
+	markPattern   = `\p{M}`
+	numberPattern = `\p{N}`
 
-	// _IRICharctersPattern defines a pattern for a valid IRI character sequence.
-	// It matches a character with Unicode letter, mark, or number properties, possibly followed
-	// by a hyphenated sequence.
-	_IRICharctersPattern = `[` + _letter + _mark + _number + `](?:[` + _letter + _mark + _number + `\-]*[` + _letter + _mark + _number + `])?`
+	// iriCharactersPattern defines a pattern for a valid IRI character sequence. It
+	// matches a character with Unicode letter, mark, or number properties, possibly
+	// followed by a hyphenated sequence.
+	iriCharactersPattern = `[` + letterPattern + markPattern + numberPattern + `](?:[` + letterPattern + markPattern + numberPattern + `\-]*[` + letterPattern + markPattern + numberPattern + `])?`
 
-	// _subdomainPattern matches one or more IRI character sequences followed by a dot, forming a subdomain.
-	_subdomainPattern = `(?:` + _IRICharctersPattern + `\.)+`
+	// subdomainPattern matches one or more IRI character sequences followed by a dot,
+	// forming a subdomain.
+	subdomainPattern = `(?:` + iriCharactersPattern + `\.)+`
+
+	// punycodePattern matches punycode labels used for internationalized domain names.
+	punycodePattern = `xn--[a-z0-9-]+`
 )
 
 var (
@@ -328,27 +176,190 @@ var (
 	// It also handles "::" elision and optional IPv4-mapped sections.
 	ExtractorIPv6Pattern = `(?:` + ExtractorNonEmptyIPv6Pattern + `|::)`
 
-	// ExtractorPortPattern defines a pattern for matching port numbers in URLs.
-	// It matches valid port numbers (1 to 65535) that are typically found in network addresses.
-	// The port number is preceded by a colon (":").
-	ExtractorPortPattern = `(?::[0-9]{1,4}|[1-5][0-9]{4}|6[0-5][0-9]{3}\b)`
+	// ExtractorPortPattern defines a pattern for matching port numbers in URLs. It
+	// matches a colon (":") followed by a valid port number (0 to 65535), as typically
+	// found in network addresses. The trailing word boundary keeps an oversized port
+	// (e.g. ":65536") from matching on its leading digits.
+	ExtractorPortPattern = `(?::(?:[0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])\b)`
 
 	// ExtractorPortOptionalPattern is similar to ExtractorPortPattern but makes the port number optional.
 	// This is useful for matching URLs where the port may or may not be specified.
 	ExtractorPortOptionalPattern = ExtractorPortPattern + `?`
 )
 
+// boundedTLDs and unboundedTLDs partition tlds.Official once at startup by whether a TLD
+// ends in an ASCII word character: boundedTLDs are safe to follow with a "\b" word
+// boundary in the compiled regex, unboundedTLDs are not (Go's "\b" only recognizes ASCII
+// word characters, so a boundary after a non-ASCII TLD would never match). The split is
+// computed entry by entry, so it never depends on the generated list's sort order.
+var boundedTLDs, unboundedTLDs = splitTLDs(tlds.Official)
+
+// Extractor configures the URL extraction process.
+// It provides options for controlling whether URL schemes and hosts are mandatory, and allows custom
+// regular expression patterns to be specified for these components. This allows fine-grained control over
+// the types of URLs that are extracted from text.
+//
+// Fields:
+//   - withScheme (bool): whether a URL scheme (e.g., "http") is required in extracted URLs.
+//   - withSchemePattern (string): a custom regular expression pattern to match URL schemes.
+//   - withHost (bool): whether a URL host (e.g., domain) is required in extracted URLs.
+//   - withHostPattern (string): a custom regular expression pattern to match URL hosts.
+type Extractor struct {
+	withScheme        bool
+	withSchemePattern string
+	withHost          bool
+	withHostPattern   string
+}
+
+// CompileRegex constructs and compiles a regular expression pattern for URL extraction.
+// It builds a composite regex pattern that can capture various URL forms, taking into account user
+// configuration for required schemes or hosts, as well as any custom patterns provided.
+// The generated pattern can match fully-qualified URLs (with schemes and hosts), email addresses,
+// and relative URLs, depending on the configuration.
+//
+// Returns:
+//   - regex (*regexp.Regexp): A compiled regular expression object that can be used to extract URLs from text.
+//
+// Example:
+//
+//	// Create an extractor that requires URL schemes.
+//	extractor := New(WithScheme())
+//	regex := extractor.CompileRegex()
+//	urls := regex.FindAllString(text, -1) // Extracts URLs from the provided text.
+func (e *Extractor) CompileRegex() (regex *regexp.Regexp) {
+	schemePattern := ExtractorSchemePattern
+
+	if e.withScheme && e.withSchemePattern != "" {
+		schemePattern = e.withSchemePattern
+	}
+
+	// knownTLDPattern combines punycode, known ASCII TLDs, pseudo TLDs (like .local, .onion),
+	// and the set of unicode TLDs into a single pattern. We add a word boundary (\b) for ASCII TLDs
+	// and keep the pattern case-insensitive with `(?i)`.
+	knownTLDPattern := `(?:(?i)` + punycodePattern + `|` + anyOf(slices.Concat(boundedTLDs, tlds.Pseudo)...) + `\b|` + anyOf(unboundedTLDs...) + `)`
+
+	// domainPattern matches typical domains by combining subdomains, known TLDs, or 'localhost'.
+	domainPattern := `(?:` + subdomainPattern + knownTLDPattern + `|localhost)`
+
+	// Host patterns:
+	//   - hostWithoutPortPattern: matches domain, IPv6 (in brackets), or bare IPv4.
+	//   - hostWithPortOptionalPattern: hostWithoutPort plus an optional port.
+	hostWithoutPortPattern := `(?:` + domainPattern + `|\[` + ExtractorIPv6Pattern + `\]|\b` + ExtractorIPv4Pattern + `\b)`
+	hostWithPortOptionalPattern := `(?:` + hostWithoutPortPattern + ExtractorPortOptionalPattern + `)`
+
+	// If a custom host pattern was provided, use it.
+	if e.withHost && e.withHostPattern != "" {
+		hostWithPortOptionalPattern = e.withHostPattern
+	}
+
+	// authorityPattern: user info + host:port.
+	authorityPattern := `(?:` + iUserInfoOptionalPattern + hostWithPortOptionalPattern + `)`
+
+	// authorityOptionalPattern allows an optional authority.
+	authorityOptionalPattern := authorityPattern + `?`
+
+	// Patterns for the URL forms:
+	//   - webURLPattern:          has authority + optional path
+	//   - emailPattern:           simplified email pattern, capturing user@host
+	//   - urlsWithSchemePattern:  fully supports an optional or mandatory authority, with path
+	webURLPattern := authorityPattern + `(?:/` + pathContPattern + `|/)?`
+	emailPattern := `(?P<relaxedEmail>[a-zA-Z0-9._%\-+]+@` + hostWithPortOptionalPattern + `)`
+	urlsWithSchemePattern := schemePattern + authorityOptionalPattern + pathContPattern
+
+	// If a custom host pattern is provided, ensure we require the authority.
+	if e.withHostPattern != "" {
+		urlsWithSchemePattern = schemePattern + authorityPattern + `(?:/` + pathContPattern + `|/)?`
+	}
+
+	// urlsWithHostPattern tries to match either web-like URLs or emails
+	// without a specific scheme.
+	urlsWithHostPattern := webURLPattern + `|` + emailPattern
+
+	// relativeURLsPattern captures relative paths (e.g. /path/to/resource or
+	// something/like/this).
+	relativeURLsPattern := `(\/[\w\/?=&#.-]*)|([\w\/?=&#.-]+?(?:\/[\w\/?=&#.-]+)+)`
+
+	// Build the final combined pattern depending on the configuration:
+	var pattern string
+
+	switch {
+	case e.withScheme:
+		pattern = urlsWithSchemePattern
+	case e.withHost:
+		pattern = urlsWithSchemePattern + `|` + urlsWithHostPattern
+	default:
+		pattern = urlsWithSchemePattern + `|` + urlsWithHostPattern + `|` + relativeURLsPattern
+	}
+
+	// Compiling the final regex pattern.
+	regex = regexp.MustCompile(pattern)
+
+	// Ensures the longest possible match is found.
+	regex.Longest()
+
+	return
+}
+
+// SetScheme sets the Extractor to require URL schemes during extraction.
+// It marks the withScheme flag as true.
+func (e *Extractor) SetScheme() {
+	e.withScheme = true
+}
+
+// SetSchemePattern sets a custom regular expression pattern for matching URL schemes.
+// It also marks the Extractor as requiring a scheme.
+//
+// Parameters:
+//   - pattern (string): a regex pattern to match URL schemes.
+func (e *Extractor) SetSchemePattern(pattern string) {
+	e.SetScheme()
+
+	e.withSchemePattern = pattern
+}
+
+// SetHost sets the Extractor to require URL hosts during extraction.
+// It marks the withHost flag as true.
+func (e *Extractor) SetHost() {
+	e.withHost = true
+}
+
+// SetHostPattern sets a custom regular expression pattern for matching URL hosts.
+// It also marks the Extractor as requiring a host.
+//
+// Parameters:
+//   - pattern (string): a regex pattern to match URL hosts.
+func (e *Extractor) SetHostPattern(pattern string) {
+	e.SetHost()
+
+	e.withHostPattern = pattern
+}
+
+// OptionFunc defines a functional option for configuring an Extractor instance.
+// It allows the caller to pass in configuration functions that modify the Extractor's
+// settings (e.g., requiring a scheme or host, or providing custom regex patterns).
+//
+// Parameters:
+//   - extractor (*Extractor): the Extractor instance to configure.
+type OptionFunc func(extractor *Extractor)
+
+// Interface defines the behavior that an Extractor must implement.
+// It requires the implementation of a method to compile a regular expression for URL extraction.
+type Interface interface {
+	CompileRegex() (regex *regexp.Regexp)
+}
+
+// Compile-time guard ensuring [Extractor] satisfies [Interface].
 var _ Interface = (*Extractor)(nil)
 
 // New creates a new Extractor instance with optional configuration.
 // The options can be used to customize the behavior of the Extractor, such as requiring URL schemes
 // or hosts, and specifying custom regex patterns for these components.
 //
-// Parameter:
-//   - ofs (...OptionFunc): A variadic list of OptionFunc functions that modify the Extractor's settings.
+// Parameters:
+//   - ofs (...OptionFunc): a variadic list of OptionFunc functions that modify the Extractor's settings.
 //
 // Returns:
-//   - extractor (*Extractor): A pointer to the configured Extractor instance.
+//   - extractor (*Extractor): the configured Extractor instance.
 func New(ofs ...OptionFunc) (extractor *Extractor) {
 	extractor = &Extractor{}
 
@@ -362,8 +373,8 @@ func New(ofs ...OptionFunc) (extractor *Extractor) {
 // WithScheme returns an OptionFunc function that configures the Extractor to require URL schemes in the extraction process.
 //
 // Returns:
-//   - (OptionFunc): A function that sets the withScheme flag to true.
-func WithScheme() OptionFunc {
+//   - f (OptionFunc): a function that sets the withScheme flag to true.
+func WithScheme() (f OptionFunc) {
 	return func(extractor *Extractor) {
 		extractor.SetScheme()
 	}
@@ -371,12 +382,12 @@ func WithScheme() OptionFunc {
 
 // WithSchemePattern returns an OptionFunc function that sets a custom regex pattern for matching URL schemes.
 //
-// Parameter:
-//   - pattern (string): A regex pattern to match URL schemes.
+// Parameters:
+//   - pattern (string): a regex pattern to match URL schemes.
 //
 // Returns:
-//   - (OptionFunc): A function that sets the custom scheme pattern and enables the withScheme flag.
-func WithSchemePattern(pattern string) OptionFunc {
+//   - f (OptionFunc): a function that sets the custom scheme pattern and enables the withScheme flag.
+func WithSchemePattern(pattern string) (f OptionFunc) {
 	return func(extractor *Extractor) {
 		extractor.SetSchemePattern(pattern)
 	}
@@ -385,8 +396,8 @@ func WithSchemePattern(pattern string) OptionFunc {
 // WithHost returns an OptionFunc function that configures the Extractor to require URL hosts in the extraction process.
 //
 // Returns:
-//   - (OptionFunc): A function that sets the withHost flag to true.
-func WithHost() OptionFunc {
+//   - f (OptionFunc): a function that sets the withHost flag to true.
+func WithHost() (f OptionFunc) {
 	return func(extractor *Extractor) {
 		extractor.SetHost()
 	}
@@ -394,12 +405,12 @@ func WithHost() OptionFunc {
 
 // WithHostPattern returns an OptionFunc function that sets a custom regex pattern for matching URL hosts.
 //
-// Parameter:
-//   - pattern (string): A regex pattern to match URL hosts.
+// Parameters:
+//   - pattern (string): a regex pattern to match URL hosts.
 //
 // Returns:
-//   - (OptionFunc): A function that sets the custom host pattern and enables the withHost flag.
-func WithHostPattern(pattern string) OptionFunc {
+//   - f (OptionFunc): a function that sets the custom host pattern and enables the withHost flag.
+func WithHostPattern(pattern string) (f OptionFunc) {
 	return func(extractor *Extractor) {
 		extractor.SetHostPattern(pattern)
 	}
@@ -409,12 +420,12 @@ func WithHostPattern(pattern string) OptionFunc {
 // It joins the provided strings with a "|" (alternation) operator and escapes each string to ensure
 // special regex characters are treated literally.
 //
-// Parameter:
-//   - strs (...string): A variadic list of strings to be included in the pattern.
+// Parameters:
+//   - strs (...string): a variadic list of strings to be included in the pattern.
 //
 // Returns:
-//   - string: A regex pattern that matches any one of the provided strings.
-func anyOf(strs ...string) string {
+//   - pattern (string): a regex pattern that matches any one of the provided strings.
+func anyOf(strs ...string) (pattern string) {
 	var b strings.Builder
 
 	b.WriteString("(?:")
@@ -429,5 +440,52 @@ func anyOf(strs ...string) string {
 
 	b.WriteByte(')')
 
-	return b.String()
+	pattern = b.String()
+
+	return
+}
+
+// splitTLDs partitions list into TLDs that end in an ASCII word character and TLDs that
+// do not. The split is deterministic: it inspects each entry on its own, so it never
+// depends on the list's sort order.
+//
+// Parameters:
+//   - list ([]string): the TLDs to partition.
+//
+// Returns:
+//   - bounded ([]string): TLDs ending in an ASCII word character, safe to follow with a
+//     "\b" word boundary.
+//   - unbounded ([]string): TLDs ending in a non-word or non-ASCII character.
+func splitTLDs(list []string) (bounded, unbounded []string) {
+	for _, tld := range list {
+		if hasASCIIWordEnding(tld) {
+			bounded = append(bounded, tld)
+		} else {
+			unbounded = append(unbounded, tld)
+		}
+	}
+
+	return
+}
+
+// hasASCIIWordEnding reports whether s ends in an ASCII word character ([0-9A-Za-z_]).
+//
+// Parameters:
+//   - s (string): the string to inspect.
+//
+// Returns:
+//   - ok (bool): true when the last byte of s is an ASCII word character.
+func hasASCIIWordEnding(s string) (ok bool) {
+	if s == "" {
+		return
+	}
+
+	c := s[len(s)-1]
+
+	ok = c == '_' ||
+		c >= '0' && c <= '9' ||
+		c >= 'a' && c <= 'z' ||
+		c >= 'A' && c <= 'Z'
+
+	return
 }

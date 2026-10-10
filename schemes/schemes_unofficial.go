@@ -7,9 +7,7 @@ package schemes
 // for application-specific or service-specific functionalities.
 //
 // Reference:
-// - https://en.wikipedia.org/wiki/List_of_URI_schemes#Unofficial_but_common_URI_schemes
-//
-// The following are some of the notable unofficial schemes:.
+//   - https://en.wikipedia.org/wiki/List_of_URI_schemes#Unofficial_but_common_URI_schemes
 var Unofficial = []string{
 	`gemini`,        // Gemini - a lightweight internet protocol for navigating and publishing on the web.
 	`jdbc`,          // Java Database Connectivity (JDBC) - for connecting to databases from Java applications.
