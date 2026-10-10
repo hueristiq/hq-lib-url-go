@@ -1,37 +1,39 @@
-// Package extractor provides advanced URL extraction capabilities from text.
+// Package extractor extracts URLs from plain text using regular expressions.
 //
-// URL extraction is a common requirement in text processing, data mining, and content analysis.
-// This package offers a highly configurable extractor that uses a composite regular expression to
-// identify and capture URLs in various forms. It supports fully-qualified URLs (with schemes and hosts),
-// email addresses, and relative URLs, while allowing users to enforce or relax requirements for URL schemes
-// and hosts. Custom regular expression patterns can also be provided to further fine-tune the extraction process.
+// It suits scanning unstructured text — web pages, logs, documents — for URLs, where a
+// single composed pattern that understands schemes, hosts, ports, Unicode domains, and
+// email addresses is more useful than hand-rolled splitting.
 //
-// The extractor leverages robust Unicode and punycode handling, and it incorporates known TLD lists and
-// scheme definitions (both official and unofficial) to ensure accurate matching of web addresses and email formats.
+// # Extraction
 //
-// Example Usage:
+// [New] returns an [Extractor]; [Extractor.CompileRegex] compiles the configured
+// extractor into a [regexp.Regexp] tuned to find the longest match at each position.
+// The behavior is set through functional options:
 //
-//	package main
+//   - [WithScheme] requires a scheme, so only fully-qualified URLs match.
+//   - [WithSchemePattern] restricts the scheme with a custom pattern, e.g. "(?:https?://)".
+//   - [WithHost] additionally matches scheme-less URLs with a host and bare email
+//     addresses; emails land in the "relaxedEmail" subexpression.
+//   - [WithHostPattern] restricts the host with a custom pattern.
+//   - With no options, relative paths (e.g. "/docs/guide") match too.
 //
-//	import (
-//	    "fmt"
-//	    "github.com/hueristiq/hq-go-url/extractor"
-//	)
+// The [Strict] and [Relaxed] presets, modeled on xurls
+// (https://github.com/mvdan/xurls), are shorthand for [WithScheme] and [WithHost]
+// respectively.
 //
-//	func main() {
-//	    // Create a new extractor that requires URL schemes.
-//	    ext := extractor.New(extractor.WithScheme())
+// # Patterns
 //
-//	    // Compile the regex pattern based on the extractor configuration.
-//	    regex := ext.CompileRegex()
+// The building blocks of the composed pattern are exported for reuse in custom
+// configurations: [ExtractorSchemePattern], [ExtractorKnownOfficialSchemePattern],
+// [ExtractorKnownUnofficialSchemePattern], [ExtractorKnownNoAuthoritySchemePattern],
+// [ExtractorKnownSchemePattern], [ExtractorIPv4Pattern], [ExtractorNonEmptyIPv6Pattern],
+// [ExtractorIPv6Pattern], [ExtractorPortPattern], and [ExtractorPortOptionalPattern].
 //
-//	    text := "Contact us at info@example.com or visit https://www.example.com for more details."
-//	    urls := regex.FindAllString(text, -1)
-//	    fmt.Println("Extracted URLs:", urls)
-//	}
+// Host matching is anchored on known TLDs: the official and pseudo TLD lists from the
+// tlds package are split once at startup by whether an entry ends in an ASCII word
+// character — only those entries are followed by a "\b" word boundary, since Go's "\b"
+// does not recognize non-ASCII word characters — so the compiled pattern never depends
+// on the lists' sort order.
 //
-// References:
-// - Regular Expression HOWTO: https://golang.org/pkg/regexp/
-// - IANA URI Schemes: https://www.iana.org/assignments/uri-schemes/uri-schemes.xhtml
-// - Unicode and UTF-8 handling in Go: https://golang.org/pkg/unicode/utf8/
+// The implementation relies on the Go standard library only.
 package extractor
