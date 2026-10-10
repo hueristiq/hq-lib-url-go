@@ -1,3 +1,7 @@
+//go:build ignore
+
+// Command schemes regenerates the official IANA URL scheme list. It is invoked via
+// go:generate (see the module root) and is excluded from normal builds.
 package main
 
 import (

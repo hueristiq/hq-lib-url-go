@@ -6,8 +6,6 @@ package schemes
 // This format is common for protocols that address specific resources or services directly.
 //
 // The list includes both officially registered schemes and commonly used unofficial schemes.
-//
-// The following are some of the notable schemes without an authority component:.
 var NoAuthority = []string{
 	`bitcoin`, // Bitcoin - Used to create Bitcoin payment URIs.
 	`cid`,     // Content-ID - Identifies a specific piece of content.
