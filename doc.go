@@ -1,4 +1,4 @@
-// Package url is the root of the hq-go-url module, a toolkit for working with URLs:
+// Package url is the root of the hq-lib-url-go module, a toolkit for working with URLs:
 // extracting them from text and parsing them into granular components.
 //
 // It suits text processing, data mining, and reconnaissance work — anywhere URLs must
@@ -20,11 +20,11 @@
 // The data packages are regenerated from their public sources with go generate; see
 // generate.go for the directives.
 //
-// [parser]: github.com/hueristiq/hq-go-url/parser
-// [extractor]: github.com/hueristiq/hq-go-url/extractor
-// [schemes]: github.com/hueristiq/hq-go-url/schemes
-// [tlds]: github.com/hueristiq/hq-go-url/tlds
-// [unicodes]: github.com/hueristiq/hq-go-url/unicodes
+// [parser]: github.com/hueristiq/hq-lib-url-go/parser
+// [extractor]: github.com/hueristiq/hq-lib-url-go/extractor
+// [schemes]: github.com/hueristiq/hq-lib-url-go/schemes
+// [tlds]: github.com/hueristiq/hq-lib-url-go/tlds
+// [unicodes]: github.com/hueristiq/hq-lib-url-go/unicodes
 //
 // The implementation relies on the Go standard library only.
 package url

@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/hueristiq/hq-go-url/extractor"
+	"github.com/hueristiq/hq-lib-url-go/extractor"
 )
 
 // corpus is a shared sample text covering the URL forms the extractor recognizes:

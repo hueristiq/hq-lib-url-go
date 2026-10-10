@@ -7,7 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/hueristiq/hq-go-url/tlds"
+	"github.com/hueristiq/hq-lib-url-go/tlds"
 )
 
 // URL extends the standard [net/url.URL] struct by embedding it and adding a parsed view of

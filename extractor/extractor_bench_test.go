@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/hueristiq/hq-go-url/extractor"
+	"github.com/hueristiq/hq-lib-url-go/extractor"
 )
 
 // regexSink and matchesSink keep benchmark results alive so the compiler cannot

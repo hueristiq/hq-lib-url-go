@@ -5,9 +5,9 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/hueristiq/hq-go-url/schemes"
-	"github.com/hueristiq/hq-go-url/tlds"
-	"github.com/hueristiq/hq-go-url/unicodes"
+	"github.com/hueristiq/hq-lib-url-go/schemes"
+	"github.com/hueristiq/hq-lib-url-go/tlds"
+	"github.com/hueristiq/hq-lib-url-go/unicodes"
 )
 
 const (

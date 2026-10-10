@@ -1,8 +1,8 @@
-# hq-go-url
+# hq-lib-url-go
 
-![made with go](https://img.shields.io/badge/made%20with-Go-1E90FF.svg) [![go reference](https://pkg.go.dev/badge/github.com/hueristiq/hq-go-url.svg)](https://pkg.go.dev/github.com/hueristiq/hq-go-url) [![license](https://img.shields.io/badge/license-MIT-gray.svg?color=1E90FF)](https://github.com/hueristiq/hq-go-url/blob/main/LICENSE) ![maintenance](https://img.shields.io/badge/maintained%3F-yes-1E90FF.svg) [![open issues](https://img.shields.io/github/issues-raw/hueristiq/hq-go-url.svg?style=flat&color=1E90FF)](https://github.com/hueristiq/hq-go-url/issues?q=is:issue+is:open) [![closed issues](https://img.shields.io/github/issues-closed-raw/hueristiq/hq-go-url.svg?style=flat&color=1E90FF)](https://github.com/hueristiq/hq-go-url/issues?q=is:issue+is:closed) [![contribution](https://img.shields.io/badge/contributions-welcome-1E90FF.svg)](https://github.com/hueristiq/hq-go-url/blob/main/CONTRIBUTING.md)
+![made with go](https://img.shields.io/badge/made%20with-Go-1E90FF.svg) [![go reference](https://pkg.go.dev/badge/github.com/hueristiq/hq-lib-url-go.svg)](https://pkg.go.dev/github.com/hueristiq/hq-lib-url-go) [![license](https://img.shields.io/badge/license-MIT-gray.svg?color=1E90FF)](https://github.com/hueristiq/hq-lib-url-go/blob/main/LICENSE) ![maintenance](https://img.shields.io/badge/maintained%3F-yes-1E90FF.svg) [![open issues](https://img.shields.io/github/issues-raw/hueristiq/hq-lib-url-go.svg?style=flat&color=1E90FF)](https://github.com/hueristiq/hq-lib-url-go/issues?q=is:issue+is:open) [![closed issues](https://img.shields.io/github/issues-closed-raw/hueristiq/hq-lib-url-go.svg?style=flat&color=1E90FF)](https://github.com/hueristiq/hq-lib-url-go/issues?q=is:issue+is:closed) [![contribution](https://img.shields.io/badge/contributions-welcome-1E90FF.svg)](https://github.com/hueristiq/hq-lib-url-go/blob/main/CONTRIBUTING.md)
 
-`hq-go-url` is a [Go](https://golang.org/) module for working with URLs: it extracts them from plain text with configurable regular expressions, and it parses them into granular components — including a domain broken down into subdomain, second-level domain, and top-level domain.
+`hq-lib-url-go` is a [Go](https://golang.org/) module for working with URLs: it extracts them from plain text with configurable regular expressions, and it parses them into granular components — including a domain broken down into subdomain, second-level domain, and top-level domain.
 
 ## Resources
 
@@ -27,10 +27,10 @@
 
 ## Installation
 
-To install `hq-go-url`, run the following command in your Go project:
+To install `hq-lib-url-go`, run the following command in your Go project:
 
 ```bash
-go get -v -u github.com/hueristiq/hq-go-url
+go get -v -u github.com/hueristiq/hq-lib-url-go
 ```
 
 ## Usage
@@ -39,8 +39,8 @@ The examples below import the packages under `hqgourl`-prefixed aliases:
 
 ```go
 import (
-	hqgourlextractor "github.com/hueristiq/hq-go-url/extractor"
-	hqgourlparser "github.com/hueristiq/hq-go-url/parser"
+	hqgourlextractor "github.com/hueristiq/hq-lib-url-go/extractor"
+	hqgourlparser "github.com/hueristiq/hq-lib-url-go/parser"
 )
 ```
 
@@ -54,7 +54,7 @@ package main
 import (
 	"fmt"
 
-	hqgourlextractor "github.com/hueristiq/hq-go-url/extractor"
+	hqgourlextractor "github.com/hueristiq/hq-lib-url-go/extractor"
 )
 
 func main() {
@@ -106,7 +106,7 @@ package main
 import (
 	"fmt"
 
-	hqgourlparser "github.com/hueristiq/hq-go-url/parser"
+	hqgourlparser "github.com/hueristiq/hq-lib-url-go/parser"
 )
 
 func main() {
@@ -147,7 +147,7 @@ package main
 import (
 	"fmt"
 
-	hqgourlparser "github.com/hueristiq/hq-go-url/parser"
+	hqgourlparser "github.com/hueristiq/hq-lib-url-go/parser"
 )
 
 func main() {
@@ -183,7 +183,7 @@ package main
 import (
 	"fmt"
 
-	hqgourlparser "github.com/hueristiq/hq-go-url/parser"
+	hqgourlparser "github.com/hueristiq/hq-lib-url-go/parser"
 )
 
 func main() {
@@ -215,12 +215,12 @@ go generate ./...
 
 ## Contributing
 
-Contributions are welcome and encouraged! Feel free to submit [Pull Requests](https://github.com/hueristiq/hq-go-url/pulls) or report [Issues](https://github.com/hueristiq/hq-go-url/issues). For more details, check out the [contribution guidelines](https://github.com/hueristiq/hq-go-url/blob/main/CONTRIBUTING.md).
+Contributions are welcome and encouraged! Feel free to submit [Pull Requests](https://github.com/hueristiq/hq-lib-url-go/pulls) or report [Issues](https://github.com/hueristiq/hq-lib-url-go/issues). For more details, check out the [contribution guidelines](https://github.com/hueristiq/hq-lib-url-go/blob/main/CONTRIBUTING.md).
 
-A big thank you to all the [contributors](https://github.com/hueristiq/hq-go-url/graphs/contributors) for your ongoing support!
+A big thank you to all the [contributors](https://github.com/hueristiq/hq-lib-url-go/graphs/contributors) for your ongoing support!
 
-![contributors](https://contrib.rocks/image?repo=hueristiq/hq-go-url&max=500)
+![contributors](https://contrib.rocks/image?repo=hueristiq/hq-lib-url-go&max=500)
 
 ## Licensing
 
-This package is licensed under the [MIT license](https://opensource.org/license/mit). You are free to use, modify, and distribute it, as long as you follow the terms of the license. You can find the full license text in the repository - [Full MIT license text](https://github.com/hueristiq/hq-go-url/blob/main/LICENSE).
+This package is licensed under the [MIT license](https://opensource.org/license/mit). You are free to use, modify, and distribute it, as long as you follow the terms of the license. You can find the full license text in the repository - [Full MIT license text](https://github.com/hueristiq/hq-lib-url-go/blob/main/LICENSE).

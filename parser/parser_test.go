@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/hueristiq/hq-go-url/parser"
+	"github.com/hueristiq/hq-lib-url-go/parser"
 )
 
 func Test_Parser_Parse(t *testing.T) {

@@ -3,7 +3,7 @@ package parser_test
 import (
 	"testing"
 
-	"github.com/hueristiq/hq-go-url/parser"
+	"github.com/hueristiq/hq-lib-url-go/parser"
 )
 
 // parseURLSink and errParseSink keep benchmark results alive so the compiler cannot

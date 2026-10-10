@@ -1,4 +1,4 @@
-module github.com/hueristiq/hq-go-url
+module github.com/hueristiq/hq-lib-url-go
 
 go 1.26.3
 
