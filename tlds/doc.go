@@ -1,29 +1,21 @@
-// Package tlds provides categorized lists of top-level domains (TLDs) and effective TLDs (eTLDs),
-// including official IANA-approved domains and commonly used pseudo-TLDs.
+// Package tlds provides categorized lists of top-level domains (TLDs) and effective
+// TLDs (eTLDs): official IANA-approved domains and public suffixes on one hand, widely
+// used pseudo-TLDs on the other.
 //
-// TLDs represent the highest level in the hierarchical domain name system, while eTLDs include
-// public suffixes such as country code second-level domains (e.g., "co.uk", "gov.in") used for
-// domain registrations. Pseudo-TLDs are unofficial but widely recognized domain suffixes used in
-// specialized networks or alternative domain name systems.
+// It suits work that must decompose a hostname into its registrable parts — subdomain,
+// second-level domain, and suffix — where a maintained list of known suffixes is more
+// useful than positional guessing.
 //
-// Example Usage:
+// # Lists
 //
-//	package main
+//   - [Official] holds the union of the IANA TLD list and the ICANN section of the
+//     Public Suffix List, so multi-label suffixes such as "co.uk" are recognized
+//     alongside single-label TLDs such as "com".
+//   - [Pseudo] holds unofficial but widely recognized suffixes used in private networks
+//     and alternative name systems, such as "local" and "onion"-style names.
 //
-//	import (
-//	    "fmt"
-//	    "github.com/hueristiq/hq-go-url/tlds"
-//	)
+// Both lists are sorted. The official list is generated from public data sources; see
+// the module root for the go:generate directives.
 //
-//	func main() {
-//	    fmt.Println("Official TLDs:", tlds.Official)
-//	    fmt.Println("Pseudo TLDs:", tlds.Pseudo)
-//	}
-//
-// References:
-// - IANA TLDs: https://data.iana.org/TLD/tlds-alpha-by-domain.txt
-// - Public Suffix List: https://publicsuffix.org/list/public_suffix_list.dat
-// - A-Z TLDs: https://tld-list.com/tlds-from-a-z
-// - Wikipedia: https://en.wikipedia.org/wiki/Top-level_domain
-// - Pseudo-TLDs: https://en.wikipedia.org/wiki/Pseudo-top-level_domain
+// The implementation relies on the Go standard library only.
 package tlds
