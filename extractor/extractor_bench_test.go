@@ -7,11 +7,12 @@ import (
 	"github.com/hueristiq/hq-lib-url-go/extractor"
 )
 
-// regexSink and matchesSink keep benchmark results alive so the compiler cannot
-// optimize the measured calls away.
+// regexSink, errRegexSink, and matchesSink keep benchmark results alive so the compiler
+// cannot optimize the measured calls away.
 var (
-	regexSink   *regexp.Regexp
-	matchesSink []string
+	regexSink    *regexp.Regexp
+	errRegexSink error
+	matchesSink  []string
 )
 
 // Benchmark_Extractor_CompileRegex measures the cost of composing and compiling the
@@ -22,13 +23,17 @@ func Benchmark_Extractor_CompileRegex(b *testing.B) {
 
 	b.ReportAllocs()
 
-	var regex *regexp.Regexp
+	var (
+		regex *regexp.Regexp
+		err   error
+	)
 
 	for b.Loop() {
-		regex = e.CompileRegex()
+		regex, err = e.CompileRegex()
 	}
 
 	regexSink = regex
+	errRegexSink = err
 }
 
 // Benchmark_Extractor_CompileRegexWithScheme measures the cost of composing and
@@ -38,19 +43,26 @@ func Benchmark_Extractor_CompileRegexWithScheme(b *testing.B) {
 
 	b.ReportAllocs()
 
-	var regex *regexp.Regexp
+	var (
+		regex *regexp.Regexp
+		err   error
+	)
 
 	for b.Loop() {
-		regex = e.CompileRegex()
+		regex, err = e.CompileRegex()
 	}
 
 	regexSink = regex
+	errRegexSink = err
 }
 
 // Benchmark_Extractor_FindAllString measures the match hot path: scanning a realistic
 // mixed corpus with the host-requiring regex.
 func Benchmark_Extractor_FindAllString(b *testing.B) {
-	regex := extractor.New(extractor.WithHost()).CompileRegex()
+	regex, err := extractor.New(extractor.WithHost()).CompileRegex()
+	if err != nil {
+		b.Fatal(err)
+	}
 
 	b.ReportAllocs()
 

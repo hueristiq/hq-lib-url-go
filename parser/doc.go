@@ -12,7 +12,9 @@
 // behavior is set through functional options:
 //
 //   - [WithDefaultScheme] applies a scheme to URLs that lack one, so "example.com/path"
-//     parses as a host plus path instead of a relative reference.
+//     parses as a host plus path instead of a relative reference. A URL whose first path
+//     segment contains ":" — an opaque URI such as "mailto:user@example.com", or a
+//     host:port pair — already carries a scheme per RFC 3986 and is left unchanged.
 //   - [WithTLDs] replaces the recognized TLD set — the union of the official and pseudo
 //     TLD lists from the tlds package by default.
 //
@@ -39,7 +41,9 @@
 // Matching is case-insensitive and ignores a trailing root dot; the Domain components
 // are stored lowercase. TLD lookup is an exact match against a sorted list via binary
 // search, so it never depends on the list's source order and never confuses a substring
-// of a TLD with the TLD itself.
+// of a TLD with the TLD itself. The generated TLD list excludes punycode (xn--) TLDs, so
+// hosts ending in one (e.g. "example.xn--p1ai") are not recognized here — while the
+// extractor package matches them.
 //
 // # Key access
 //

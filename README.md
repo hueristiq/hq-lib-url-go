@@ -53,6 +53,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 
 	hqgourlextractor "github.com/hueristiq/hq-lib-url-go/extractor"
 )
@@ -60,7 +61,10 @@ import (
 func main() {
 	e := hqgourlextractor.New(hqgourlextractor.WithScheme())
 
-	regex := e.CompileRegex()
+	regex, err := e.CompileRegex()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	text := "Check these out: ftp://ftp.example.com, https://secure.example.com, and mailto:someone@example.com."
 
@@ -88,11 +92,11 @@ Available configurations:
 
 - With no options, relative paths such as `/docs/guide` match too.
 
-The pattern building blocks are exported (`ExtractorSchemePattern`, `ExtractorKnownSchemePattern`, `ExtractorIPv4Pattern`, `ExtractorIPv6Pattern`, `ExtractorPortPattern`, …) for reuse in custom configurations:
+The pattern building blocks are exported (`SchemePattern`, `KnownSchemePattern`, `IPv4Pattern`, `IPv6Pattern`, `PortPattern`, …) for reuse in custom configurations:
 
 ```go
 e := hqgourlextractor.New(
-	hqgourlextractor.WithSchemePattern(hqgourlextractor.ExtractorKnownSchemePattern),
+	hqgourlextractor.WithSchemePattern(hqgourlextractor.KnownSchemePattern),
 )
 ```
 
@@ -112,7 +116,7 @@ import (
 func main() {
 	p := hqgourlparser.New(hqgourlparser.WithDefaultScheme("https"))
 
-	parsed, err := p.Parse("www.example.com:8080/path/file.txt")
+	parsed, err := p.Parse("www.example.com/path/file.txt")
 	if err != nil {
 		fmt.Println("Error parsing URL:", err)
 
@@ -125,17 +129,16 @@ func main() {
 	fmt.Printf("Subdomain: %s\n", parsed.Domain.Subdomain)
 	fmt.Printf("Second-Level Domain (SLD): %s\n", parsed.Domain.SecondLevelDomain)
 	fmt.Printf("Top-Level Domain (TLD): %s\n", parsed.Domain.TopLevelDomain)
-	fmt.Printf("Port: %s\n", parsed.Port())
 	fmt.Printf("Path: %s\n", parsed.Path)
 }
 ```
 
 Available configurations:
 
-- `WithDefaultScheme(scheme)` — parse scheme-less URLs like `example.com/path` as absolute URLs with the given scheme.
+- `WithDefaultScheme(scheme)` — parse scheme-less URLs like `example.com/path` as absolute URLs with the given scheme. A URL whose first path segment contains `:` — an opaque URI such as `mailto:user@example.com`, or a `host:port` pair — already carries a scheme per RFC 3986 and is left unchanged; include the scheme explicitly when parsing such strings (the [Key Access](#key-access) example below shows port extraction from a fully qualified URL).
 - `WithTLDs("custom", ...)` — replace the recognized TLD set (the union of the official and pseudo lists by default).
 
-Hosts are decomposed deterministically: IP literals get a nil `Domain`; a single-label host such as `localhost` lands wholly in `SecondLevelDomain`; a host with no recognized TLD is decomposed positionally with `TopLevelDomain` left empty; a host that is entirely a known suffix (e.g. `co.uk`) lands wholly in `TopLevelDomain`.
+Hosts are decomposed deterministically: IP literals get a nil `Domain`; a single-label host such as `localhost` lands wholly in `SecondLevelDomain`; a host with no recognized TLD is decomposed positionally with `TopLevelDomain` left empty; a host that is entirely a known suffix (e.g. `co.uk`) lands wholly in `TopLevelDomain`. Punycode (`xn--`) TLDs are not in the generated TLD list, so the parser does not recognize them — the extractor matches them.
 
 ### Key Access
 
@@ -207,7 +210,7 @@ func main() {
 
 ## Data Packages
 
-The `schemes`, `tlds`, and `unicodes` packages hold the categorized data the parser and extractor build on: official, unofficial, and no-authority URL schemes; official and pseudo TLDs (including multi-label public suffixes); and RFC 3987 Unicode character ranges. They are regenerated from public sources with:
+The `schemes`, `tlds`, and `unicodes` packages hold the categorized data the parser and extractor build on: official, unofficial, and no-authority URL schemes; official and pseudo TLDs (including multi-label public suffixes); and RFC 3987 Unicode character ranges. The official scheme list tracks the active IANA registry — Historical and obsolete entries are excluded. They are regenerated from public sources with:
 
 ```bash
 go generate ./...

@@ -7,8 +7,9 @@
 // # Extraction
 //
 // [New] returns an [Extractor]; [Extractor.CompileRegex] compiles the configured
-// extractor into a [regexp.Regexp] tuned to find the longest match at each position.
-// The behavior is set through functional options:
+// extractor into a [regexp.Regexp] tuned to find the longest match at each position,
+// returning an error when a custom pattern fails to compile. The behavior is set through
+// functional options:
 //
 //   - [WithScheme] requires a scheme, so only fully-qualified URLs match.
 //   - [WithSchemePattern] restricts the scheme with a custom pattern, e.g. "(?:https?://)".
@@ -20,16 +21,19 @@
 // # Patterns
 //
 // The building blocks of the composed pattern are exported for reuse in custom
-// configurations: [ExtractorSchemePattern], [ExtractorKnownOfficialSchemePattern],
-// [ExtractorKnownUnofficialSchemePattern], [ExtractorKnownNoAuthoritySchemePattern],
-// [ExtractorKnownSchemePattern], [ExtractorIPv4Pattern], [ExtractorNonEmptyIPv6Pattern],
-// [ExtractorIPv6Pattern], [ExtractorPortPattern], and [ExtractorPortOptionalPattern].
+// configurations: [SchemePattern], [KnownOfficialSchemePattern],
+// [KnownUnofficialSchemePattern], [KnownNoAuthoritySchemePattern], [KnownSchemePattern],
+// [IPv4Pattern], [NonEmptyIPv6Pattern], [IPv6Pattern], [PortPattern], and
+// [PortOptionalPattern]. They are variables only so they can be spliced into larger
+// pattern strings; callers must not modify them.
 //
 // Host matching is anchored on known TLDs: the official and pseudo TLD lists from the
 // tlds package are split once at startup by whether an entry ends in an ASCII word
 // character — only those entries are followed by a "\b" word boundary, since Go's "\b"
-// does not recognize non-ASCII word characters — so the compiled pattern never depends
-// on the lists' sort order.
+// does not recognize non-ASCII word characters — and the resulting alternation is
+// composed once, on first use, so the compiled pattern never depends on the lists' sort
+// order and compilation does not rebuild it per call. Punycode (xn--) hosts are matched
+// even though the generated official TLD list excludes them.
 //
 // The implementation relies on the Go standard library only.
 package extractor

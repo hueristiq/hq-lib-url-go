@@ -73,6 +73,25 @@ func Test_Parser_Parse(t *testing.T) {
 			false,
 		},
 		{
+			// "bo.nordland.no" is a recognized suffix while "nordland.no" is not: the
+			// scan must continue past the non-matching suffix and keep the longest match.
+			"URL with nested multi-label TLD",
+			"https://www.bo.nordland.no/",
+			&parser.URL{
+				URL: &url.URL{
+					Scheme: "https",
+					Host:   "www.bo.nordland.no",
+					Path:   "/",
+				},
+				Domain: &parser.Domain{
+					Subdomain:         "",
+					SecondLevelDomain: "www",
+					TopLevelDomain:    "bo.nordland.no",
+				},
+			},
+			false,
+		},
+		{
 			"URL with unknown TLD decomposes positionally",
 			"https://www.example.invalidtld/path",
 			&parser.URL{
@@ -281,7 +300,7 @@ func Test_Parser_Parse(t *testing.T) {
 			true,
 		},
 		{
-			"Invalid URL 2 <- Path get's normalized",
+			"URL with percent-encoded CR in path",
 			"https://example.com/w%0d%2e/",
 			&parser.URL{
 				URL: &url.URL{
@@ -299,7 +318,7 @@ func Test_Parser_Parse(t *testing.T) {
 			false,
 		},
 		{
-			"Invalid URL 3",
+			"Scheme-less URL with query",
 			"example.com/with/path?some'param=`'+OR+ORDER+BY+1--",
 			&parser.URL{
 				URL: &url.URL{
@@ -317,7 +336,7 @@ func Test_Parser_Parse(t *testing.T) {
 			false,
 		},
 		{
-			"Invalid URL 4 <- Path get's normalized",
+			"URL with relative dot segments in path",
 			"https://example.com/a/b/c/../c",
 			&parser.URL{
 				URL: &url.URL{
@@ -462,6 +481,20 @@ func Test_Parser_WithDefaultScheme_Parse(t *testing.T) {
 			},
 			false,
 		},
+		{
+			// A ":" in the first path segment marks an opaque URI with an explicit
+			// scheme: the default scheme must not be prepended.
+			"Opaque URI with explicit scheme",
+			"mailto:user@example.com",
+			&parser.URL{
+				URL: &url.URL{
+					Scheme: "mailto",
+					Opaque: "user@example.com",
+				},
+				Domain: &parser.Domain{},
+			},
+			false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -545,6 +578,30 @@ func Test_Parser_WithTLDs_Parse(t *testing.T) {
 			assert.Equal(t, tt.expectedParsedURL, actualParsedURL)
 		})
 	}
+}
+
+func Test_Parser_WithTLDs_Parse_multiLabelTLDWithoutParent(t *testing.T) {
+	t.Parallel()
+
+	// "uk" is not configured, but "co.uk" is: the scan must continue past the
+	// non-matching "uk" suffix and recognize the longer configured suffix.
+	p := parser.New(parser.WithTLDs("co.uk"))
+
+	actualParsedURL, err := p.Parse("https://example.co.uk/path")
+
+	require.NoError(t, err)
+	assert.Equal(t, &parser.URL{
+		URL: &url.URL{
+			Scheme: "https",
+			Host:   "example.co.uk",
+			Path:   "/path",
+		},
+		Domain: &parser.Domain{
+			Subdomain:         "",
+			SecondLevelDomain: "example",
+			TopLevelDomain:    "co.uk",
+		},
+	}, actualParsedURL)
 }
 
 func Test_URL_Key(t *testing.T) {
