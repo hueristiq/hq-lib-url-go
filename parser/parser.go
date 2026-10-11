@@ -172,19 +172,17 @@ func splitHostPort(hostport string) (host, port string) {
 				port = rest[1:]
 			}
 
-			return
+			return host, port
 		}
 	}
 
 	if strings.Count(hostport, ":") == 1 {
 		host, port, _ = strings.Cut(hostport, ":")
 
-		return
+		return host, port
 	}
 
-	host = hostport
-
-	return
+	return hostport, ""
 }
 
 // Domain represents a parsed domain name, broken down into three main components:
@@ -327,22 +325,19 @@ func (p *Parser) Parse(raw string) (parsed *URL, err error) {
 
 	u, err := url.Parse(raw)
 	if err != nil {
-		err = fmt.Errorf("parser.Parse: %w", err)
-
-		return
+		return nil, fmt.Errorf("parser.Parse: %w", err)
 	}
 
-	parsed = &URL{
+	return &URL{
 		URL:    u,
 		Domain: p.parseDomain(u.Hostname()),
-	}
-
-	return
+	}, nil
 }
 
 // addScheme is a helper method that ensures the URL string is absolute by adding the
-// configured default scheme if one is missing. It checks for various URL patterns and
-// prepends the scheme accordingly.
+// configured default scheme if one is missing. A ":" in the first path segment (before
+// any "/") marks an absolute URI that already carries an explicit scheme — possibly an
+// opaque one such as "mailto:user@example.com" — so such input is returned unchanged.
 //
 // Parameters:
 //   - raw (string): the input URL string which may be missing a scheme.
@@ -356,12 +351,16 @@ func (p *Parser) addScheme(raw string) (absolute string) {
 	case strings.HasPrefix(raw, "://"):
 		absolute = p.scheme + raw
 	case !strings.Contains(raw, "//"):
+		if firstSegment, _, _ := strings.Cut(raw, "/"); strings.Contains(firstSegment, ":") {
+			return raw
+		}
+
 		absolute = p.scheme + "://" + raw
 	default:
 		absolute = raw
 	}
 
-	return
+	return absolute
 }
 
 // parseDomain decomposes a hostname into a Domain following the rules documented on
@@ -416,7 +415,8 @@ func (p *Parser) parseDomain(hostname string) (domain *Domain) {
 // findTLDOffset examines the domain components (split by ".") in reverse order to
 // determine the starting index of the longest recognized TLD. It binary-searches each
 // candidate suffix in the Parser's sorted TLD list, so matching is exact and never
-// depends on substring containment.
+// depends on substring containment. The scan continues past non-matching suffixes and
+// retains the last match, which is the longest recognized suffix of the host.
 //
 // Parameters:
 //   - parts ([]string): the domain labels (e.g., ["www", "example", "com"]).
@@ -432,14 +432,14 @@ func (p *Parser) findTLDOffset(parts []string) (offset int, found bool) {
 		candidate := strings.Join(parts[i:], ".")
 
 		if _, ok := slices.BinarySearch(p.tlds, candidate); !ok {
-			break
+			continue
 		}
 
 		offset = i - 1
 		found = true
 	}
 
-	return
+	return offset, found
 }
 
 // OptionFunc defines a function type used for configuring a Parser instance. Options allow
@@ -576,7 +576,7 @@ func InferScheme(host string) (scheme string) {
 //   - cleaned (string): the path with dot segments removed.
 func removeDotSegments(path string) (cleaned string) {
 	if path == "" {
-		return
+		return ""
 	}
 
 	// pop drops the last segment from an output buffer, everything after its last "/".
@@ -598,11 +598,11 @@ func removeDotSegments(path string) (cleaned string) {
 		case strings.HasPrefix(input, "./"):
 			input = input[2:]
 		case strings.HasPrefix(input, "/./"):
-			input = input[2:]
+			input = "/" + input[3:]
 		case input == "/.":
 			input = "/"
 		case strings.HasPrefix(input, "/../"):
-			input = input[2:]
+			input = "/" + input[4:]
 			output = pop(output)
 		case input == "/..":
 			input = "/"
@@ -633,5 +633,5 @@ func removeDotSegments(path string) (cleaned string) {
 
 	cleaned = output
 
-	return
+	return cleaned
 }

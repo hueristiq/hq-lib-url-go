@@ -8,8 +8,9 @@
 //
 // # Lists
 //
-//   - [Official] holds every IANA-assigned scheme and is regenerated periodically from
-//     the IANA registry.
+//   - [Official] holds the active IANA-assigned schemes — Historical and otherwise
+//     obsolete registry entries are excluded — and is regenerated periodically from the
+//     IANA registry.
 //   - [Unofficial] holds widely used schemes that are not registered with IANA.
 //   - [NoAuthority] holds schemes followed by ":" instead of "//", such as "mailto".
 //

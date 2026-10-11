@@ -1,9 +1,11 @@
 package extractor
 
 import (
+	"fmt"
 	"regexp"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/hueristiq/hq-lib-url-go/schemes"
 	"github.com/hueristiq/hq-lib-url-go/tlds"
@@ -96,95 +98,99 @@ const (
 )
 
 var (
-	// ExtractorSchemePattern defines a general pattern for matching URL schemes.
-	// It matches any URL scheme that starts with alphabetical characters (a-z, A-Z), followed by
-	// any combination of alphabets, dots (.), hyphens (-), or plus signs (+), and ends with "://".
+	// The exported patterns below are the building blocks of the composed extraction
+	// pattern. They are mutable variables only so they can be spliced into larger
+	// pattern strings; callers must not modify them.
+	//
+	// SchemePattern defines a general pattern for matching URL schemes.
+	// It matches any URL scheme that starts with an alphabetical character (a-z, A-Z), followed by
+	// any combination of letters, digits, dots (.), hyphens (-), or plus signs (+), and ends with "://".
 	// Additionally, it matches schemes from a predefined list that do not require an authority (host),
 	// ending with just a colon (":"). These are known as "no-authority" schemes (e.g., "mailto:").
 	//
 	// This pattern covers a broad range of schemes, making it versatile for extracting different types
 	// of URLs, whether they require an authority component or not.
-	ExtractorSchemePattern = `(?:[a-zA-Z][a-zA-Z.\-+]*://|` + anyOf(schemes.NoAuthority...) + `:)`
+	SchemePattern = `(?:[a-zA-Z][a-zA-Z0-9.\-+]*://|` + anyOf(schemes.NoAuthority...) + `:)`
 
-	// ExtractorKnownOfficialSchemePattern defines a pattern for matching officially recognized
+	// KnownOfficialSchemePattern defines a pattern for matching officially recognized
 	// URL schemes. These include well-known schemes such as "http", "https", "ftp", etc., as registered
 	// with IANA. The pattern ensures that the scheme is followed by "://".
 	//
 	// This pattern ensures that only officially recognized schemes are matched.
-	ExtractorKnownOfficialSchemePattern = `(?:` + anyOf(schemes.Official...) + `://)`
+	KnownOfficialSchemePattern = `(?:` + anyOf(schemes.Official...) + `://)`
 
-	// ExtractorKnownUnofficialSchemePattern defines a pattern for matching unofficial or less commonly
+	// KnownUnofficialSchemePattern defines a pattern for matching unofficial or less commonly
 	// used URL schemes. These schemes may not be registered with IANA but are still valid in specific contexts,
 	// such as application-specific schemes (e.g., "slack://", "zoommtg://").
 	// The pattern ensures that the scheme is followed by "://".
 	//
 	// This pattern is useful for applications that work with unofficial or niche schemes.
-	ExtractorKnownUnofficialSchemePattern = `(?:` + anyOf(schemes.Unofficial...) + `://)`
+	KnownUnofficialSchemePattern = `(?:` + anyOf(schemes.Unofficial...) + `://)`
 
-	// ExtractorKnownNoAuthoritySchemePattern defines a pattern for matching URL schemes that
+	// KnownNoAuthoritySchemePattern defines a pattern for matching URL schemes that
 	// do not require an authority component (host). These schemes are followed by a colon (":") rather than "://".
 	// Examples include "mailto:", "tel:", and "sms:".
 	//
 	// This pattern is used for schemes where a host is not applicable, making it suitable for schemes
 	// that involve direct communication (e.g., email or telephone).
-	ExtractorKnownNoAuthoritySchemePattern = `(?:` + anyOf(schemes.NoAuthority...) + `:)`
+	KnownNoAuthoritySchemePattern = `(?:` + anyOf(schemes.NoAuthority...) + `:)`
 
-	// ExtractorKnownSchemePattern combines the patterns for officially recognized, unofficial,
+	// KnownSchemePattern combines the patterns for officially recognized, unofficial,
 	// and no-authority-required schemes into a single comprehensive pattern.
 	// It is case-insensitive (denoted by "(?i)") and matches the broadest possible range of URLs.
 	//
 	// This pattern is suitable for extracting any known scheme, regardless of its official status
 	// or whether it requires an authority component.
-	ExtractorKnownSchemePattern = `(?:(?i)(?:` + anyOf(schemes.Official...) + `|` + anyOf(schemes.Unofficial...) + `)://|` + anyOf(schemes.NoAuthority...) + `:)`
+	KnownSchemePattern = `(?:(?i)(?:` + anyOf(schemes.Official...) + `|` + anyOf(schemes.Unofficial...) + `)://|` + anyOf(schemes.NoAuthority...) + `:)`
 
-	// ExtractorIPv4Pattern defines a pattern for matching valid IPv4 addresses.
+	// IPv4Pattern defines a pattern for matching valid IPv4 addresses.
 	// It matches four groups of 1 to 3 digits (0-255) separated by periods (e.g., "192.168.0.1").
 	//
 	// This pattern is essential for extracting or validating IPv4 addresses in URLs or hostnames.
-	ExtractorIPv4Pattern = `(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9][0-9]|[0-9])\.(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9][0-9]|[0-9])\.(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9][0-9]|[0-9])\.(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9][0-9]|[0-9])`
+	IPv4Pattern = `(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9][0-9]|[0-9])\.(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9][0-9]|[0-9])\.(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9][0-9]|[0-9])\.(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9][0-9]|[0-9])`
 
-	// ExtractorNonEmptyIPv6Pattern defines a detailed pattern for matching valid, non-empty IPv6 addresses.
+	// NonEmptyIPv6Pattern defines a detailed pattern for matching valid, non-empty IPv6 addresses.
 	// It accounts for various valid formats of IPv6 addresses, including those with elisions ("::") and IPv4
 	// address representations.
 	//
 	// This pattern supports matching fully expanded IPv6 addresses, elided sections, and IPv4-mapped IPv6 addresses.
-	ExtractorNonEmptyIPv6Pattern = `(?:` +
+	NonEmptyIPv6Pattern = `(?:` +
 		// 7 colon-terminated chomps, followed by a final chomp or the rest of an elision.
 		`(?:[0-9a-fA-F]{1,4}:){7}(?:[0-9a-fA-F]{1,4}|:)|` +
 		// 6 chomps, followed by an IPv4 address or elision with final chomp or final elision.
-		`(?:[0-9a-fA-F]{1,4}:){6}(?:` + ExtractorIPv4Pattern + `|:[0-9a-fA-F]{1,4}|:)|` +
+		`(?:[0-9a-fA-F]{1,4}:){6}(?:` + IPv4Pattern + `|:[0-9a-fA-F]{1,4}|:)|` +
 		// 5 chomps, followed by an elision with optional IPv4 or up to 2 final chomps.
-		`(?:[0-9a-fA-F]{1,4}:){5}(?::` + ExtractorIPv4Pattern + `|(?::[0-9a-fA-F]{1,4}){1,2}|:)|` +
+		`(?:[0-9a-fA-F]{1,4}:){5}(?::` + IPv4Pattern + `|(?::[0-9a-fA-F]{1,4}){1,2}|:)|` +
 		// 4 chomps, followed by an elision with optional IPv4 (optionally preceded by a chomp) or
 		// up to 3 final chomps.
-		`(?:[0-9a-fA-F]{1,4}:){4}(?:(?::[0-9a-fA-F]{1,4}){0,1}:` + ExtractorIPv4Pattern + `|(?::[0-9a-fA-F]{1,4}){1,3}|:)|` +
+		`(?:[0-9a-fA-F]{1,4}:){4}(?:(?::[0-9a-fA-F]{1,4}){0,1}:` + IPv4Pattern + `|(?::[0-9a-fA-F]{1,4}){1,3}|:)|` +
 		// 3 chomps, followed by an elision with optional IPv4 (preceded by up to 2 chomps) or
 		// up to 4 final chomps.
-		`(?:[0-9a-fA-F]{1,4}:){3}(?:(?::[0-9a-fA-F]{1,4}){0,2}:` + ExtractorIPv4Pattern + `|(?::[0-9a-fA-F]{1,4}){1,4}|:)|` +
+		`(?:[0-9a-fA-F]{1,4}:){3}(?:(?::[0-9a-fA-F]{1,4}){0,2}:` + IPv4Pattern + `|(?::[0-9a-fA-F]{1,4}){1,4}|:)|` +
 		// 2 chomps, followed by an elision with optional IPv4 (preceded by up to 3 chomps) or
 		// up to 5 final chomps.
-		`(?:[0-9a-fA-F]{1,4}:){2}(?:(?::[0-9a-fA-F]{1,4}){0,3}:` + ExtractorIPv4Pattern + `|(?::[0-9a-fA-F]{1,4}){1,5}|:)|` +
+		`(?:[0-9a-fA-F]{1,4}:){2}(?:(?::[0-9a-fA-F]{1,4}){0,3}:` + IPv4Pattern + `|(?::[0-9a-fA-F]{1,4}){1,5}|:)|` +
 		// 1 chomp, followed by an elision with optional IPv4 (preceded by up to 4 chomps) or
 		// up to 6 final chomps.
-		`(?:[0-9a-fA-F]{1,4}:){1}(?:(?::[0-9a-fA-F]{1,4}){0,4}:` + ExtractorIPv4Pattern + `|(?::[0-9a-fA-F]{1,4}){1,6}|:)|` +
+		`(?:[0-9a-fA-F]{1,4}:){1}(?:(?::[0-9a-fA-F]{1,4}){0,4}:` + IPv4Pattern + `|(?::[0-9a-fA-F]{1,4}){1,6}|:)|` +
 		// elision, followed by optional IPv4 (preceded by up to 5 chomps) or up to 7 final chomps.
 		// `:` is an intentionally omitted alternative, to avoid matching `::`.
-		`:(?:(?::[0-9a-fA-F]{1,4}){0,5}:` + ExtractorIPv4Pattern + `|(?::[0-9a-fA-F]{1,4}){1,7})` +
+		`:(?:(?::[0-9a-fA-F]{1,4}){0,5}:` + IPv4Pattern + `|(?::[0-9a-fA-F]{1,4}){1,7})` +
 		`)`
 
-	// ExtractorIPv6Pattern is a comprehensive pattern that matches both fully expanded and compressed IPv6 addresses.
+	// IPv6Pattern is a comprehensive pattern that matches both fully expanded and compressed IPv6 addresses.
 	// It also handles "::" elision and optional IPv4-mapped sections.
-	ExtractorIPv6Pattern = `(?:` + ExtractorNonEmptyIPv6Pattern + `|::)`
+	IPv6Pattern = `(?:` + NonEmptyIPv6Pattern + `|::)`
 
-	// ExtractorPortPattern defines a pattern for matching port numbers in URLs. It
+	// PortPattern defines a pattern for matching port numbers in URLs. It
 	// matches a colon (":") followed by a valid port number (0 to 65535), as typically
 	// found in network addresses. The trailing word boundary keeps an oversized port
 	// (e.g. ":65536") from matching on its leading digits.
-	ExtractorPortPattern = `(?::(?:[0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])\b)`
+	PortPattern = `(?::(?:[0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])\b)`
 
-	// ExtractorPortOptionalPattern is similar to ExtractorPortPattern but makes the port number optional.
+	// PortOptionalPattern is similar to PortPattern but makes the port number optional.
 	// This is useful for matching URLs where the port may or may not be specified.
-	ExtractorPortOptionalPattern = ExtractorPortPattern + `?`
+	PortOptionalPattern = PortPattern + `?`
 )
 
 // boundedTLDs and unboundedTLDs partition tlds.Official once at startup by whether a TLD
@@ -193,6 +199,16 @@ var (
 // word characters, so a boundary after a non-ASCII TLD would never match). The split is
 // computed entry by entry, so it never depends on the generated list's sort order.
 var boundedTLDs, unboundedTLDs = splitTLDs(tlds.Official)
+
+// knownTLDPatternOnce memoizes the known-TLD alternation, which splices the official and
+// pseudo TLD lists into a large pattern string. Composing it is done once per process
+// (on first use) instead of on every CompileRegex call.
+var knownTLDPatternOnce = sync.OnceValue(func() string {
+	// Combines punycode, known ASCII TLDs, pseudo TLDs (like .local), and the set of
+	// unicode TLDs into a single pattern. We add a word boundary (\b) for ASCII TLDs
+	// and keep the pattern case-insensitive with `(?i)`.
+	return `(?:(?i)` + punycodePattern + `|` + anyOf(slices.Concat(boundedTLDs, tlds.Pseudo)...) + `\b|` + anyOf(unboundedTLDs...) + `)`
+})
 
 // Extractor configures the URL extraction process.
 // It provides options for controlling whether URL schemes and hosts are mandatory, and allows custom
@@ -218,25 +234,30 @@ type Extractor struct {
 // and relative URLs, depending on the configuration.
 //
 // Returns:
-//   - regex (*regexp.Regexp): A compiled regular expression object that can be used to extract URLs from text.
+//   - regex (*regexp.Regexp): A compiled regular expression object, tuned to find the longest
+//     match at each position, that can be used to extract URLs from text.
+//   - err (error): a wrapped error when the composed pattern fails to compile, e.g. when a
+//     custom scheme or host pattern is invalid.
 //
 // Example:
 //
 //	// Create an extractor that requires URL schemes.
 //	extractor := New(WithScheme())
-//	regex := extractor.CompileRegex()
+//
+//	regex, err := extractor.CompileRegex()
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//
 //	urls := regex.FindAllString(text, -1) // Extracts URLs from the provided text.
-func (e *Extractor) CompileRegex() (regex *regexp.Regexp) {
-	schemePattern := ExtractorSchemePattern
+func (e *Extractor) CompileRegex() (regex *regexp.Regexp, err error) {
+	schemePattern := SchemePattern
 
 	if e.withScheme && e.withSchemePattern != "" {
 		schemePattern = e.withSchemePattern
 	}
 
-	// knownTLDPattern combines punycode, known ASCII TLDs, pseudo TLDs (like .local, .onion),
-	// and the set of unicode TLDs into a single pattern. We add a word boundary (\b) for ASCII TLDs
-	// and keep the pattern case-insensitive with `(?i)`.
-	knownTLDPattern := `(?:(?i)` + punycodePattern + `|` + anyOf(slices.Concat(boundedTLDs, tlds.Pseudo)...) + `\b|` + anyOf(unboundedTLDs...) + `)`
+	knownTLDPattern := knownTLDPatternOnce()
 
 	// domainPattern matches typical domains by combining subdomains, known TLDs, or 'localhost'.
 	domainPattern := `(?:` + subdomainPattern + knownTLDPattern + `|localhost)`
@@ -244,8 +265,8 @@ func (e *Extractor) CompileRegex() (regex *regexp.Regexp) {
 	// Host patterns:
 	//   - hostWithoutPortPattern: matches domain, IPv6 (in brackets), or bare IPv4.
 	//   - hostWithPortOptionalPattern: hostWithoutPort plus an optional port.
-	hostWithoutPortPattern := `(?:` + domainPattern + `|\[` + ExtractorIPv6Pattern + `\]|\b` + ExtractorIPv4Pattern + `\b)`
-	hostWithPortOptionalPattern := `(?:` + hostWithoutPortPattern + ExtractorPortOptionalPattern + `)`
+	hostWithoutPortPattern := `(?:` + domainPattern + `|\[` + IPv6Pattern + `\]|\b` + IPv4Pattern + `\b)`
+	hostWithPortOptionalPattern := `(?:` + hostWithoutPortPattern + PortOptionalPattern + `)`
 
 	// If a custom host pattern was provided, use it.
 	if e.withHost && e.withHostPattern != "" {
@@ -277,7 +298,7 @@ func (e *Extractor) CompileRegex() (regex *regexp.Regexp) {
 
 	// relativeURLsPattern captures relative paths (e.g. /path/to/resource or
 	// something/like/this).
-	relativeURLsPattern := `(\/[\w\/?=&#.-]*)|([\w\/?=&#.-]+?(?:\/[\w\/?=&#.-]+)+)`
+	relativeURLsPattern := `(?:/[\w/?=&#.-]*)|(?:[\w/?=&#.-]+?(?:/[\w/?=&#.-]+)+)`
 
 	// Build the final combined pattern depending on the configuration:
 	var pattern string
@@ -292,12 +313,15 @@ func (e *Extractor) CompileRegex() (regex *regexp.Regexp) {
 	}
 
 	// Compiling the final regex pattern.
-	regex = regexp.MustCompile(pattern)
+	regex, err = regexp.Compile(pattern)
+	if err != nil {
+		return nil, fmt.Errorf("extractor.CompileRegex: %w", err)
+	}
 
 	// Ensures the longest possible match is found.
 	regex.Longest()
 
-	return
+	return regex, nil
 }
 
 // SetScheme sets the Extractor to require URL schemes during extraction.
@@ -345,7 +369,7 @@ type OptionFunc func(extractor *Extractor)
 // Interface defines the behavior that an Extractor must implement.
 // It requires the implementation of a method to compile a regular expression for URL extraction.
 type Interface interface {
-	CompileRegex() (regex *regexp.Regexp)
+	CompileRegex() (regex *regexp.Regexp, err error)
 }
 
 // Compile-time guard ensuring [Extractor] satisfies [Interface].

@@ -259,7 +259,7 @@ func Test_Extractor_CompileRegex(t *testing.T) {
 		},
 		{
 			"URLs with host pattern",
-			[]extractor.OptionFunc{extractor.WithHostPattern(`(?:(?:\w+[.])*example\.com` + extractor.ExtractorPortOptionalPattern + `)`)},
+			[]extractor.OptionFunc{extractor.WithHostPattern(`(?:(?:\w+[.])*example\.com` + extractor.PortOptionalPattern + `)`)},
 			wantWithHostPattern,
 		},
 	}
@@ -268,8 +268,9 @@ func Test_Extractor_CompileRegex(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			regex := extractor.New(tt.options...).CompileRegex()
+			regex, err := extractor.New(tt.options...).CompileRegex()
 
+			require.NoError(t, err)
 			require.NotNil(t, regex)
 
 			assert.Equal(t, tt.want, regex.FindAllString(corpus, -1))
@@ -294,8 +295,9 @@ func Test_Extractor_CompileRegex_default(t *testing.T) {
 		"assets/css/site.css",
 	}
 
-	regex := extractor.New().CompileRegex()
+	regex, err := extractor.New().CompileRegex()
 
+	require.NoError(t, err)
 	require.NotNil(t, regex)
 
 	assert.Equal(t, want, regex.FindAllString(text, -1))
@@ -338,8 +340,9 @@ func Test_Extractor_CompileRegex_portBoundaries(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			regex := extractor.New(tt.options...).CompileRegex()
+			regex, err := extractor.New(tt.options...).CompileRegex()
 
+			require.NoError(t, err)
 			require.NotNil(t, regex)
 
 			assert.Equal(t, tt.want, regex.FindAllString(tt.text, -1))
@@ -357,9 +360,51 @@ func Test_Extractor_CompileRegex_punycode(t *testing.T) {
 		"https://example.xn--p1ai",
 	}
 
-	regex := extractor.New(extractor.WithScheme()).CompileRegex()
+	regex, err := extractor.New(extractor.WithScheme()).CompileRegex()
 
+	require.NoError(t, err)
 	require.NotNil(t, regex)
 
 	assert.Equal(t, want, regex.FindAllString(text, -1))
+}
+
+func Test_Extractor_CompileRegex_invalidPattern(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		options []extractor.OptionFunc
+	}{
+		{
+			"invalid scheme pattern",
+			[]extractor.OptionFunc{extractor.WithSchemePattern(`(`)},
+		},
+		{
+			"invalid host pattern",
+			[]extractor.OptionFunc{extractor.WithHostPattern(`[`)},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			regex, err := extractor.New(tt.options...).CompileRegex()
+
+			require.Nil(t, regex)
+			require.Error(t, err)
+			assert.ErrorContains(t, err, "extractor.CompileRegex")
+		})
+	}
+}
+
+func Test_Extractor_CompileRegex_schemeWithDigits(t *testing.T) {
+	t.Parallel()
+
+	regex, err := extractor.New(extractor.WithScheme()).CompileRegex()
+
+	require.NoError(t, err)
+	require.NotNil(t, regex)
+
+	assert.Equal(t, []string{"h323://example.com/call"}, regex.FindAllString("h323://example.com/call", -1))
 }

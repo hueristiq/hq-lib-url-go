@@ -10,9 +10,10 @@
 //
 //   - [Official] holds the union of the IANA TLD list and the ICANN section of the
 //     Public Suffix List, so multi-label suffixes such as "co.uk" are recognized
-//     alongside single-label TLDs such as "com".
+//     alongside single-label TLDs such as "com". Punycode (xn--) TLDs are excluded from
+//     the generated list; the extractor package matches them anyway.
 //   - [Pseudo] holds unofficial but widely recognized suffixes used in private networks
-//     and alternative name systems, such as "local" and "onion"-style names.
+//     and alternative name systems, such as "local" and "localhost".
 //
 // Both lists are sorted. The official list is generated from public data sources; see
 // the module root for the go:generate directives.
