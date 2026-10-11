@@ -135,7 +135,7 @@ func main() {
 
 Available configurations:
 
-- `WithDefaultScheme(scheme)` — parse scheme-less URLs like `example.com/path` as absolute URLs with the given scheme. A URL whose first path segment contains `:` — an opaque URI such as `mailto:user@example.com`, or a `host:port` pair — already carries a scheme per RFC 3986 and is left unchanged; include the scheme explicitly when parsing such strings (the [Key Access](#key-access) example below shows port extraction from a fully qualified URL).
+- `WithDefaultScheme(scheme)` — parse scheme-less URLs like `example.com/path` as absolute URLs with the given scheme. A scheme-less `host:port` input (digits after the colon, e.g. `example.com:8080/api`) is treated as a host and gets the default scheme; any other first-path-segment colon — an opaque URI such as `mailto:user@example.com` — already carries a scheme and is left unchanged.
 - `WithTLDs("custom", ...)` — replace the recognized TLD set (the union of the official and pseudo lists by default).
 
 Hosts are decomposed deterministically: IP literals get a nil `Domain`; a single-label host such as `localhost` lands wholly in `SecondLevelDomain`; a host with no recognized TLD is decomposed positionally with `TopLevelDomain` left empty; a host that is entirely a known suffix (e.g. `co.uk`) lands wholly in `TopLevelDomain`. Punycode (`xn--`) TLDs are not in the generated TLD list, so the parser does not recognize them — the extractor matches them.

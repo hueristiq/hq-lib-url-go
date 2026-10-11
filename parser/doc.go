@@ -12,9 +12,11 @@
 // behavior is set through functional options:
 //
 //   - [WithDefaultScheme] applies a scheme to URLs that lack one, so "example.com/path"
-//     parses as a host plus path instead of a relative reference. A URL whose first path
-//     segment contains ":" — an opaque URI such as "mailto:user@example.com", or a
-//     host:port pair — already carries a scheme per RFC 3986 and is left unchanged.
+//     parses as a host plus path instead of a relative reference. A scheme-less
+//     "host:port" input (digits after the colon) is treated as a host and gets the
+//     default scheme; any other URL whose first path segment contains ":" — an opaque
+//     URI such as "mailto:user@example.com" — already carries a scheme per RFC 3986 and
+//     is left unchanged.
 //   - [WithTLDs] replaces the recognized TLD set — the union of the official and pseudo
 //     TLD lists from the tlds package by default.
 //
