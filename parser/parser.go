@@ -338,6 +338,8 @@ func (p *Parser) Parse(raw string) (parsed *URL, err error) {
 // configured default scheme if one is missing. A ":" in the first path segment (before
 // any "/") marks an absolute URI that already carries an explicit scheme — possibly an
 // opaque one such as "mailto:user@example.com" — so such input is returned unchanged.
+// The exception is a scheme-less "host:port" input (digits after the colon), which is
+// a host and gets the default scheme.
 //
 // Parameters:
 //   - raw (string): the input URL string which may be missing a scheme.
@@ -351,7 +353,7 @@ func (p *Parser) addScheme(raw string) (absolute string) {
 	case strings.HasPrefix(raw, "://"):
 		absolute = p.scheme + raw
 	case !strings.Contains(raw, "//"):
-		if firstSegment, _, _ := strings.Cut(raw, "/"); strings.Contains(firstSegment, ":") {
+		if firstSegment, _, _ := strings.Cut(raw, "/"); strings.Contains(firstSegment, ":") && !hasNumericPort(firstSegment) {
 			return raw
 		}
 
@@ -361,6 +363,29 @@ func (p *Parser) addScheme(raw string) (absolute string) {
 	}
 
 	return absolute
+}
+
+// hasNumericPort reports whether segment looks like a "host:port" pair — that is, it
+// contains a ":" followed by a non-empty, all-digits port.
+//
+// Parameters:
+//   - segment (string): the first path segment of a scheme-less URL.
+//
+// Returns:
+//   - ok (bool): true when segment carries a numeric port.
+func hasNumericPort(segment string) (ok bool) {
+	_, port, found := strings.Cut(segment, ":")
+	if !found || port == "" {
+		return false
+	}
+
+	for _, r := range port {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+
+	return true
 }
 
 // parseDomain decomposes a hostname into a Domain following the rules documented on

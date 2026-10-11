@@ -495,6 +495,64 @@ func Test_Parser_WithDefaultScheme_Parse(t *testing.T) {
 			},
 			false,
 		},
+		{
+			// A ":" in the first path segment followed by non-digits stays opaque.
+			"Opaque URI with non-numeric remainder",
+			"foo:bar",
+			&parser.URL{
+				URL: &url.URL{
+					Scheme: "foo",
+					Opaque: "bar",
+				},
+				Domain: &parser.Domain{},
+			},
+			false,
+		},
+		{
+			// A scheme-less "host:port" pair (digits after the colon) is a host: the
+			// default scheme is prepended and the port is kept.
+			"URL without scheme with host and port",
+			"example.com:8080/api",
+			&parser.URL{
+				URL: &url.URL{
+					Scheme: "https",
+					Host:   "example.com:8080",
+					Path:   "/api",
+				},
+				Domain: &parser.Domain{
+					Subdomain:         "",
+					SecondLevelDomain: "example",
+					TopLevelDomain:    "com",
+				},
+			},
+			false,
+		},
+		{
+			"URL without scheme with IP and port",
+			"127.0.0.1:8080/x",
+			&parser.URL{
+				URL: &url.URL{
+					Scheme: "https",
+					Host:   "127.0.0.1:8080",
+					Path:   "/x",
+				},
+			},
+			false,
+		},
+		{
+			"URL without scheme with single-label host and port",
+			"localhost:8080",
+			&parser.URL{
+				URL: &url.URL{
+					Scheme: "https",
+					Host:   "localhost:8080",
+				},
+				Domain: &parser.Domain{
+					SecondLevelDomain: "localhost",
+				},
+			},
+			false,
+		},
 	}
 
 	for _, tt := range tests {
