@@ -278,6 +278,114 @@ func Test_Extractor_CompileRegex(t *testing.T) {
 	}
 }
 
+func Test_Extractor_CompileRegex_withoutEmail(t *testing.T) {
+	t.Parallel()
+
+	text := `
+		See https://example.com/docs?q=1 or mail admin@example.com.
+	`
+
+	// withoutEmail drops the bare-email alternation; the match survives via
+	// the user info + host URL form. Combine with WithoutUserInfo to exclude
+	// both.
+	want := []string{
+		"https://example.com/docs?q=1",
+		"admin@example.com",
+	}
+
+	regex, err := extractor.New(extractor.WithoutEmail()).CompileRegex()
+
+	require.NoError(t, err)
+	require.NotNil(t, regex)
+
+	assert.Equal(t, want, regex.FindAllString(text, -1))
+}
+
+func Test_Extractor_CompileRegex_withoutUserInfo(t *testing.T) {
+	t.Parallel()
+
+	hostPattern := `(?:(?:\w+[.])*example\.com` + extractor.PortOptionalPattern + `)`
+
+	//nolint:gosec // G101: the credentials are fake, exercising user info matching.
+	text := `
+		See https://user:pass@example.com/private or https://example.com/public.
+	`
+
+	// withoutUserInfo strips user info from the authority, so the scheme URL
+	// loses its prefix; the bare-email alternation then swallows the host
+	// ("pass@example.com"), which is why callers wanting neither pair it
+	// with WithoutEmail.
+	want := []string{
+		"pass@example.com",
+		"https://example.com/public",
+	}
+
+	regex, err := extractor.New(
+		extractor.WithHostPattern(hostPattern),
+		extractor.WithoutUserInfo(),
+	).CompileRegex()
+
+	require.NoError(t, err)
+	require.NotNil(t, regex)
+
+	assert.Equal(t, want, regex.FindAllString(text, -1))
+}
+
+func Test_Extractor_CompileRegex_withoutEmailAndUserInfo(t *testing.T) {
+	t.Parallel()
+
+	hostPattern := `(?:(?:\w+[.])*example\.com` + extractor.PortOptionalPattern + `)`
+
+	text := `
+		See https://'jane@example.com/private or https://example.com/public,
+		mail admin@example.com.
+	`
+
+	want := []string{
+		"example.com/private",
+		"https://example.com/public",
+		"example.com",
+	}
+
+	regex, err := extractor.New(
+		extractor.WithHostPattern(hostPattern),
+		extractor.WithoutEmail(),
+		extractor.WithoutUserInfo(),
+	).CompileRegex()
+
+	require.NoError(t, err)
+	require.NotNil(t, regex)
+
+	assert.Equal(t, want, regex.FindAllString(text, -1))
+}
+
+func Test_Extractor_CompileRegex_withoutUserInfo_host(t *testing.T) {
+	t.Parallel()
+
+	//nolint:gosec // G101: the credentials are fake, exercising user info matching.
+	text := `
+		See https://user:pass@example.com/private or mailto:user@example.com.
+	`
+
+	// With the host required and user info excluded, the authority becomes
+	// mandatory, so the scheme URL drops its userinfo prefix; no-authority
+	// schemes are unaffected.
+	want := []string{
+		"pass@example.com",
+		"mailto:user@example.com",
+	}
+
+	regex, err := extractor.New(
+		extractor.WithHost(),
+		extractor.WithoutUserInfo(),
+	).CompileRegex()
+
+	require.NoError(t, err)
+	require.NotNil(t, regex)
+
+	assert.Equal(t, want, regex.FindAllString(text, -1))
+}
+
 func Test_Extractor_CompileRegex_default(t *testing.T) {
 	t.Parallel()
 

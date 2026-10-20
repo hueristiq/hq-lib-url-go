@@ -220,11 +220,15 @@ var knownTLDPatternOnce = sync.OnceValue(func() string {
 //   - withSchemePattern (string): a custom regular expression pattern to match URL schemes.
 //   - withHost (bool): whether a URL host (e.g., domain) is required in extracted URLs.
 //   - withHostPattern (string): a custom regular expression pattern to match URL hosts.
+//   - withoutEmail (bool): whether bare email addresses are excluded from extraction.
+//   - withoutUserInfo (bool): whether user info in the authority is excluded from extraction.
 type Extractor struct {
 	withScheme        bool
 	withSchemePattern string
 	withHost          bool
 	withHostPattern   string
+	withoutEmail      bool
+	withoutUserInfo   bool
 }
 
 // CompileRegex constructs and compiles a regular expression pattern for URL extraction.
@@ -251,12 +255,6 @@ type Extractor struct {
 //
 //	urls := regex.FindAllString(text, -1) // Extracts URLs from the provided text.
 func (e *Extractor) CompileRegex() (regex *regexp.Regexp, err error) {
-	schemePattern := SchemePattern
-
-	if e.withScheme && e.withSchemePattern != "" {
-		schemePattern = e.withSchemePattern
-	}
-
 	knownTLDPattern := knownTLDPatternOnce()
 
 	// domainPattern matches typical domains by combining subdomains, known TLDs, or 'localhost'.
@@ -274,7 +272,13 @@ func (e *Extractor) CompileRegex() (regex *regexp.Regexp, err error) {
 	}
 
 	// authorityPattern: user info + host:port.
-	authorityPattern := `(?:` + iUserInfoOptionalPattern + hostWithPortOptionalPattern + `)`
+	userInfoPattern := iUserInfoOptionalPattern
+
+	if e.withoutUserInfo {
+		userInfoPattern = ""
+	}
+
+	authorityPattern := `(?:` + userInfoPattern + hostWithPortOptionalPattern + `)`
 
 	// authorityOptionalPattern allows an optional authority.
 	authorityOptionalPattern := authorityPattern + `?`
@@ -285,16 +289,57 @@ func (e *Extractor) CompileRegex() (regex *regexp.Regexp, err error) {
 	//   - urlsWithSchemePattern:  fully supports an optional or mandatory authority, with path
 	webURLPattern := authorityPattern + `(?:/` + pathContPattern + `|/)?`
 	emailPattern := `(?P<relaxedEmail>[a-zA-Z0-9._%\-+]+@` + hostWithPortOptionalPattern + `)`
-	urlsWithSchemePattern := schemePattern + authorityOptionalPattern + pathContPattern
 
-	// If a custom host pattern is provided, ensure we require the authority.
+	// The authority and no-authority scheme patterns mirror the exported
+	// SchemePattern's components. A custom scheme pattern, when provided,
+	// replaces both and is treated as an authority scheme.
+	authoritySchemePattern := `[a-zA-Z][a-zA-Z0-9.\-+]*://`
+	noAuthoritySchemePattern := anyOf(schemes.NoAuthority...) + `:`
+
+	if e.withScheme && e.withSchemePattern != "" {
+		authoritySchemePattern = e.withSchemePattern
+		noAuthoritySchemePattern = ""
+	}
+
+	schemePattern := `(?:` + authoritySchemePattern
+
+	if noAuthoritySchemePattern != "" {
+		schemePattern += `|` + noAuthoritySchemePattern
+	}
+
+	schemePattern += `)`
+
+	// Schemes with an authority take it optionally by default. When user info
+	// is excluded, the authority becomes mandatory: leaving it optional would
+	// let the path pattern absorb userinfo text ("user@host") as a path.
+	// No-authority schemes never take an authority.
+	authoritySchemeAuthorityPattern := authorityOptionalPattern
+	authoritySchemePathPattern := pathContPattern
+
+	if e.withoutUserInfo {
+		authoritySchemeAuthorityPattern = authorityPattern
+		authoritySchemePathPattern = `(?:/` + pathContPattern + `|/)?`
+	}
+
+	urlsWithSchemePattern := authoritySchemePattern + authoritySchemeAuthorityPattern + authoritySchemePathPattern
+
+	if noAuthoritySchemePattern != "" {
+		urlsWithSchemePattern += `|` + noAuthoritySchemePattern + pathContPattern
+	}
+
+	// If a custom host pattern is provided, everything must carry the host:
+	// scheme URLs and no-authority scheme matches alike.
 	if e.withHostPattern != "" {
 		urlsWithSchemePattern = schemePattern + authorityPattern + `(?:/` + pathContPattern + `|/)?`
 	}
 
 	// urlsWithHostPattern tries to match either web-like URLs or emails
 	// without a specific scheme.
-	urlsWithHostPattern := webURLPattern + `|` + emailPattern
+	urlsWithHostPattern := webURLPattern
+
+	if !e.withoutEmail {
+		urlsWithHostPattern += `|` + emailPattern
+	}
 
 	// relativeURLsPattern captures relative paths (e.g. /path/to/resource or
 	// something/like/this).
@@ -356,6 +401,22 @@ func (e *Extractor) SetHostPattern(pattern string) {
 	e.SetHost()
 
 	e.withHostPattern = pattern
+}
+
+// SetWithoutEmail marks the Extractor to exclude the bare email address
+// pattern from extraction. Email addresses matched through the user info +
+// host URL form are unaffected; combine with SetWithoutUserInfo to exclude
+// both.
+func (e *Extractor) SetWithoutEmail() {
+	e.withoutEmail = true
+}
+
+// SetWithoutUserInfo marks the Extractor to exclude user info from the
+// authority component of extracted URLs. URLs carrying user info degrade to
+// their host (and path); bare email addresses are unaffected, as they match
+// through the email pattern.
+func (e *Extractor) SetWithoutUserInfo() {
+	e.withoutUserInfo = true
 }
 
 // OptionFunc defines a functional option for configuring an Extractor instance.
@@ -437,6 +498,32 @@ func WithHost() (f OptionFunc) {
 func WithHostPattern(pattern string) (f OptionFunc) {
 	return func(extractor *Extractor) {
 		extractor.SetHostPattern(pattern)
+	}
+}
+
+// WithoutEmail returns an OptionFunc function that configures the Extractor
+// to exclude the bare email address pattern from extraction. Email addresses
+// matched through the user info + host URL form are unaffected; combine with
+// WithoutUserInfo to exclude both.
+//
+// Returns:
+//   - f (OptionFunc): a function that marks the withoutEmail flag as true.
+func WithoutEmail() (f OptionFunc) {
+	return func(extractor *Extractor) {
+		extractor.SetWithoutEmail()
+	}
+}
+
+// WithoutUserInfo returns an OptionFunc function that configures the
+// Extractor to exclude user info from the authority component of extracted
+// URLs. URLs carrying user info degrade to their host (and path); bare email
+// addresses are unaffected, as they match through the email pattern.
+//
+// Returns:
+//   - f (OptionFunc): a function that marks the withoutUserInfo flag as true.
+func WithoutUserInfo() (f OptionFunc) {
+	return func(extractor *Extractor) {
+		extractor.SetWithoutUserInfo()
 	}
 }
 
