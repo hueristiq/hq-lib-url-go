@@ -9,6 +9,7 @@ package schemes
 var NoAuthority = []string{
 	`bitcoin`, // Bitcoin - Used to create Bitcoin payment URIs.
 	`cid`,     // Content-ID - Identifies a specific piece of content.
+	`data`,    // Data - Embeds data inline as if it were an external resource.
 	`file`,    // Files - Refers to files on the local filesystem.
 	`magnet`,  // Torrent magnets - Used for referencing torrents without relying on a tracker.
 	`mailto`,  // Mail - Refers to email addresses for sending mail.

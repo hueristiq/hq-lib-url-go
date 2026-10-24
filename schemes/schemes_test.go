@@ -48,3 +48,17 @@ func Test_Official_isSortedAndDeduplicated(t *testing.T) {
 	assert.True(t, slices.IsSorted(schemes.Official), "Official must be sorted ascending")
 	assert.Len(t, slices.Compact(slices.Clone(schemes.Official)), len(schemes.Official), "Official must not contain duplicates")
 }
+
+func Test_NoAuthority_isSorted(t *testing.T) {
+	t.Parallel()
+
+	assert.True(t, slices.IsSorted(schemes.NoAuthority), "NoAuthority must be sorted ascending")
+}
+
+func Test_NoAuthority_includesData(t *testing.T) {
+	t.Parallel()
+
+	_, found := slices.BinarySearch(schemes.NoAuthority, "data")
+
+	assert.True(t, found, `"data" must be listed as a no-authority scheme`)
+}

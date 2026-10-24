@@ -117,6 +117,7 @@ var wantWithScheme = []string{
 	"file:///C:/path/to/file.txt",
 	"mailto:user@example.com",
 	"ftp://user:password@ftp.example.com:21",
+	"data:text/plain;base64,aGVsbG8=",
 	"sms:123",
 	"xmpp:foo@bar",
 	"bitcoin:Addr23?amount=1&message=foo",
@@ -188,6 +189,7 @@ var wantWithHost = []string{
 	"file:///C:/path/to/file.txt",
 	"mailto:user@example.com",
 	"ftp://user:password@ftp.example.com:21",
+	"data:text/plain;base64,aGVsbG8=",
 	"sms:123",
 	"xmpp:foo@bar",
 	"bitcoin:Addr23?amount=1&message=foo",
@@ -276,6 +278,114 @@ func Test_Extractor_CompileRegex(t *testing.T) {
 			assert.Equal(t, tt.want, regex.FindAllString(corpus, -1))
 		})
 	}
+}
+
+func Test_Extractor_CompileRegex_withoutEmail(t *testing.T) {
+	t.Parallel()
+
+	text := `
+		See https://example.com/docs?q=1 or mail admin@example.com.
+	`
+
+	// withoutEmail drops the bare-email alternation; the match survives via
+	// the user info + host URL form. Combine with WithoutUserInfo to exclude
+	// both.
+	want := []string{
+		"https://example.com/docs?q=1",
+		"admin@example.com",
+	}
+
+	regex, err := extractor.New(extractor.WithoutEmail()).CompileRegex()
+
+	require.NoError(t, err)
+	require.NotNil(t, regex)
+
+	assert.Equal(t, want, regex.FindAllString(text, -1))
+}
+
+func Test_Extractor_CompileRegex_withoutUserInfo(t *testing.T) {
+	t.Parallel()
+
+	hostPattern := `(?:(?:\w+[.])*example\.com` + extractor.PortOptionalPattern + `)`
+
+	//nolint:gosec // G101: the credentials are fake, exercising user info matching.
+	text := `
+		See https://user:pass@example.com/private or https://example.com/public.
+	`
+
+	// withoutUserInfo strips user info from the authority, so the scheme URL
+	// loses its prefix; the bare-email alternation then swallows the host
+	// ("pass@example.com"), which is why callers wanting neither pair it
+	// with WithoutEmail.
+	want := []string{
+		"pass@example.com",
+		"https://example.com/public",
+	}
+
+	regex, err := extractor.New(
+		extractor.WithHostPattern(hostPattern),
+		extractor.WithoutUserInfo(),
+	).CompileRegex()
+
+	require.NoError(t, err)
+	require.NotNil(t, regex)
+
+	assert.Equal(t, want, regex.FindAllString(text, -1))
+}
+
+func Test_Extractor_CompileRegex_withoutEmailAndUserInfo(t *testing.T) {
+	t.Parallel()
+
+	hostPattern := `(?:(?:\w+[.])*example\.com` + extractor.PortOptionalPattern + `)`
+
+	text := `
+		See https://'jane@example.com/private or https://example.com/public,
+		mail admin@example.com.
+	`
+
+	want := []string{
+		"example.com/private",
+		"https://example.com/public",
+		"example.com",
+	}
+
+	regex, err := extractor.New(
+		extractor.WithHostPattern(hostPattern),
+		extractor.WithoutEmail(),
+		extractor.WithoutUserInfo(),
+	).CompileRegex()
+
+	require.NoError(t, err)
+	require.NotNil(t, regex)
+
+	assert.Equal(t, want, regex.FindAllString(text, -1))
+}
+
+func Test_Extractor_CompileRegex_withoutUserInfo_host(t *testing.T) {
+	t.Parallel()
+
+	//nolint:gosec // G101: the credentials are fake, exercising user info matching.
+	text := `
+		See https://user:pass@example.com/private or mailto:user@example.com.
+	`
+
+	// With the host required and user info excluded, the authority becomes
+	// mandatory, so the scheme URL drops its userinfo prefix; no-authority
+	// schemes are unaffected.
+	want := []string{
+		"pass@example.com",
+		"mailto:user@example.com",
+	}
+
+	regex, err := extractor.New(
+		extractor.WithHost(),
+		extractor.WithoutUserInfo(),
+	).CompileRegex()
+
+	require.NoError(t, err)
+	require.NotNil(t, regex)
+
+	assert.Equal(t, want, regex.FindAllString(text, -1))
 }
 
 func Test_Extractor_CompileRegex_default(t *testing.T) {
@@ -407,4 +517,122 @@ func Test_Extractor_CompileRegex_schemeWithDigits(t *testing.T) {
 	require.NotNil(t, regex)
 
 	assert.Equal(t, []string{"h323://example.com/call"}, regex.FindAllString("h323://example.com/call", -1))
+}
+
+func Test_Extractor_CompileRegex_schemeCaseInsensitive(t *testing.T) {
+	t.Parallel()
+
+	regex, err := extractor.New(extractor.WithScheme()).CompileRegex()
+
+	require.NoError(t, err)
+	require.NotNil(t, regex)
+
+	for _, text := range []string{
+		"MAILTO:user@example.com",
+		"TEL:+123",
+		"SMS:123",
+		"HTTP://example.com/path",
+	} {
+		assert.Equal(t, []string{text}, regex.FindAllString(text, -1))
+	}
+}
+
+func Test_Extractor_CompileRegex_hostQueryFragment(t *testing.T) {
+	t.Parallel()
+
+	regex, err := extractor.New(extractor.WithHost()).CompileRegex()
+
+	require.NoError(t, err)
+	require.NotNil(t, regex)
+
+	tests := []struct {
+		name string
+		text string
+		want []string
+	}{
+		{"query without path", "www.example.com?q=1", []string{"www.example.com?q=1"}},
+		{"fragment without path", "www.example.com#frag", []string{"www.example.com#frag"}},
+		{"port and query", "192.168.1.1:8080?x=1", []string{"192.168.1.1:8080?x=1"}},
+		{"trailing dot", "www.example.com.", []string{"www.example.com"}},
+		{"path and query", "www.example.com/search?q=openai", []string{"www.example.com/search?q=openai"}},
+		{"empty query", "www.example.com?", []string{"www.example.com"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, tt.want, regex.FindAllString(tt.text, -1))
+		})
+	}
+}
+
+func Test_Extractor_CompileRegex_customPatternGrouping(t *testing.T) {
+	t.Parallel()
+
+	t.Run("scheme alternation", func(t *testing.T) {
+		t.Parallel()
+
+		regex, err := extractor.New(extractor.WithSchemePattern(`http://|https://`)).CompileRegex()
+
+		require.NoError(t, err)
+		require.NotNil(t, regex)
+
+		text := "http://example.com https://example.com/x"
+
+		assert.Equal(t, []string{"http://example.com", "https://example.com/x"}, regex.FindAllString(text, -1))
+	})
+
+	t.Run("host alternation in email", func(t *testing.T) {
+		t.Parallel()
+
+		regex, err := extractor.New(
+			extractor.WithHostPattern(`example\.com|example\.org`),
+			extractor.WithoutUserInfo(),
+		).CompileRegex()
+
+		require.NoError(t, err)
+		require.NotNil(t, regex)
+
+		assert.Equal(t, []string{"admin@example.org"}, regex.FindAllString("admin@example.org", -1))
+	})
+
+	t.Run("host alternation in URL", func(t *testing.T) {
+		t.Parallel()
+
+		regex, err := extractor.New(extractor.WithHostPattern(`example\.com|example\.org`)).CompileRegex()
+
+		require.NoError(t, err)
+		require.NotNil(t, regex)
+
+		assert.Equal(t, []string{"example.org/x"}, regex.FindAllString("example.org/x", -1))
+	})
+}
+
+func Test_Extractor_CompileRegex_dataScheme(t *testing.T) {
+	t.Parallel()
+
+	const dataURL = "data:text/plain;base64,aGVsbG8="
+
+	tests := []struct {
+		name    string
+		options []extractor.OptionFunc
+	}{
+		{"with scheme", []extractor.OptionFunc{extractor.WithScheme()}},
+		{"with host", []extractor.OptionFunc{extractor.WithHost()}},
+		{"default", nil},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			regex, err := extractor.New(tt.options...).CompileRegex()
+
+			require.NoError(t, err)
+			require.NotNil(t, regex)
+
+			assert.Equal(t, []string{dataURL}, regex.FindAllString(dataURL, -1))
+		})
+	}
 }

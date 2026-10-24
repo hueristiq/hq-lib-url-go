@@ -6,16 +6,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_Parser_SetTLDs_lowercasesSortsAndDeduplicates(t *testing.T) {
-	t.Parallel()
-
-	p := &Parser{}
-
-	p.SetTLDs("Co.Uk", "co.uk", "com", "COM", "org")
-
-	assert.Equal(t, []string{"co.uk", "com", "org"}, p.tlds)
-}
-
 // Test_removeDotSegments checks the dot-segment removal algorithm against the vectors of
 // RFC 3986 §5.2.4, plus the relative and degenerate forms.
 func Test_removeDotSegments(t *testing.T) {

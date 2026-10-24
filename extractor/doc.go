@@ -35,5 +35,29 @@
 // order and compilation does not rebuild it per call. Punycode (xn--) hosts are matched
 // even though the generated official TLD list excludes them.
 //
+// # Unescaping
+//
+// [DecodeJSEscapes] converts the escape sequences found in JavaScript and JSON strings
+// into the characters they represent, so that matching the decoded text recovers
+// escaped URLs (for example `https:\/\/example.com`, `\x68ttps://example.com`, or
+// `example\u002ecom`).
+//
+// # Literals
+//
+// [JSLiteralGroups] finds string literals in JavaScript source text and collapses runs
+// of concatenated literals into single strings. Code like
+//
+//	const u = "https://" + host + "/api";
+//
+// yields a [LiteralGroup] whose [LiteralGroup.Collapsed] value is "https://EXPR/api",
+// with [ExpressionPlaceholder] standing in for the expression whose value cannot be
+// known. Collapsed strings are then matchable by URL patterns, recovering URLs that a
+// plain scan of the raw text would miss. The scanner is text-based rather than a
+// parser: division expressions, regex literals, and unquoted markup may occasionally
+// be read as literals.
+//
+// Literals inside an unknown expression are returned as separate groups, which may
+// overlap the enclosing group's Start/End range.
+//
 // The implementation relies on the Go standard library only.
 package extractor
