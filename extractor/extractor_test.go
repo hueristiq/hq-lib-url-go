@@ -117,6 +117,7 @@ var wantWithScheme = []string{
 	"file:///C:/path/to/file.txt",
 	"mailto:user@example.com",
 	"ftp://user:password@ftp.example.com:21",
+	"data:text/plain;base64,aGVsbG8=",
 	"sms:123",
 	"xmpp:foo@bar",
 	"bitcoin:Addr23?amount=1&message=foo",
@@ -188,6 +189,7 @@ var wantWithHost = []string{
 	"file:///C:/path/to/file.txt",
 	"mailto:user@example.com",
 	"ftp://user:password@ftp.example.com:21",
+	"data:text/plain;base64,aGVsbG8=",
 	"sms:123",
 	"xmpp:foo@bar",
 	"bitcoin:Addr23?amount=1&message=foo",
@@ -515,4 +517,122 @@ func Test_Extractor_CompileRegex_schemeWithDigits(t *testing.T) {
 	require.NotNil(t, regex)
 
 	assert.Equal(t, []string{"h323://example.com/call"}, regex.FindAllString("h323://example.com/call", -1))
+}
+
+func Test_Extractor_CompileRegex_schemeCaseInsensitive(t *testing.T) {
+	t.Parallel()
+
+	regex, err := extractor.New(extractor.WithScheme()).CompileRegex()
+
+	require.NoError(t, err)
+	require.NotNil(t, regex)
+
+	for _, text := range []string{
+		"MAILTO:user@example.com",
+		"TEL:+123",
+		"SMS:123",
+		"HTTP://example.com/path",
+	} {
+		assert.Equal(t, []string{text}, regex.FindAllString(text, -1))
+	}
+}
+
+func Test_Extractor_CompileRegex_hostQueryFragment(t *testing.T) {
+	t.Parallel()
+
+	regex, err := extractor.New(extractor.WithHost()).CompileRegex()
+
+	require.NoError(t, err)
+	require.NotNil(t, regex)
+
+	tests := []struct {
+		name string
+		text string
+		want []string
+	}{
+		{"query without path", "www.example.com?q=1", []string{"www.example.com?q=1"}},
+		{"fragment without path", "www.example.com#frag", []string{"www.example.com#frag"}},
+		{"port and query", "192.168.1.1:8080?x=1", []string{"192.168.1.1:8080?x=1"}},
+		{"trailing dot", "www.example.com.", []string{"www.example.com"}},
+		{"path and query", "www.example.com/search?q=openai", []string{"www.example.com/search?q=openai"}},
+		{"empty query", "www.example.com?", []string{"www.example.com"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, tt.want, regex.FindAllString(tt.text, -1))
+		})
+	}
+}
+
+func Test_Extractor_CompileRegex_customPatternGrouping(t *testing.T) {
+	t.Parallel()
+
+	t.Run("scheme alternation", func(t *testing.T) {
+		t.Parallel()
+
+		regex, err := extractor.New(extractor.WithSchemePattern(`http://|https://`)).CompileRegex()
+
+		require.NoError(t, err)
+		require.NotNil(t, regex)
+
+		text := "http://example.com https://example.com/x"
+
+		assert.Equal(t, []string{"http://example.com", "https://example.com/x"}, regex.FindAllString(text, -1))
+	})
+
+	t.Run("host alternation in email", func(t *testing.T) {
+		t.Parallel()
+
+		regex, err := extractor.New(
+			extractor.WithHostPattern(`example\.com|example\.org`),
+			extractor.WithoutUserInfo(),
+		).CompileRegex()
+
+		require.NoError(t, err)
+		require.NotNil(t, regex)
+
+		assert.Equal(t, []string{"admin@example.org"}, regex.FindAllString("admin@example.org", -1))
+	})
+
+	t.Run("host alternation in URL", func(t *testing.T) {
+		t.Parallel()
+
+		regex, err := extractor.New(extractor.WithHostPattern(`example\.com|example\.org`)).CompileRegex()
+
+		require.NoError(t, err)
+		require.NotNil(t, regex)
+
+		assert.Equal(t, []string{"example.org/x"}, regex.FindAllString("example.org/x", -1))
+	})
+}
+
+func Test_Extractor_CompileRegex_dataScheme(t *testing.T) {
+	t.Parallel()
+
+	const dataURL = "data:text/plain;base64,aGVsbG8="
+
+	tests := []struct {
+		name    string
+		options []extractor.OptionFunc
+	}{
+		{"with scheme", []extractor.OptionFunc{extractor.WithScheme()}},
+		{"with host", []extractor.OptionFunc{extractor.WithHost()}},
+		{"default", nil},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			regex, err := extractor.New(tt.options...).CompileRegex()
+
+			require.NoError(t, err)
+			require.NotNil(t, regex)
+
+			assert.Equal(t, []string{dataURL}, regex.FindAllString(dataURL, -1))
+		})
+	}
 }

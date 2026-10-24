@@ -2,7 +2,7 @@
 
 ![made with go](https://img.shields.io/badge/made%20with-Go-1E90FF.svg) [![go reference](https://pkg.go.dev/badge/github.com/hueristiq/hq-lib-url-go.svg)](https://pkg.go.dev/github.com/hueristiq/hq-lib-url-go) [![license](https://img.shields.io/badge/license-MIT-gray.svg?color=1E90FF)](https://github.com/hueristiq/hq-lib-url-go/blob/main/LICENSE) ![maintenance](https://img.shields.io/badge/maintained%3F-yes-1E90FF.svg) [![open issues](https://img.shields.io/github/issues-raw/hueristiq/hq-lib-url-go.svg?style=flat&color=1E90FF)](https://github.com/hueristiq/hq-lib-url-go/issues?q=is:issue+is:open) [![closed issues](https://img.shields.io/github/issues-closed-raw/hueristiq/hq-lib-url-go.svg?style=flat&color=1E90FF)](https://github.com/hueristiq/hq-lib-url-go/issues?q=is:issue+is:closed) [![contribution](https://img.shields.io/badge/contributions-welcome-1E90FF.svg)](https://github.com/hueristiq/hq-lib-url-go/blob/main/CONTRIBUTING.md)
 
-`hq-lib-url-go` is a [Go](https://golang.org/) module for working with URLs: it extracts them from plain text with configurable regular expressions, and it parses them into granular components — including a domain broken down into subdomain, second-level domain, and top-level domain.
+`hq-lib-url-go` is a [Go](https://golang.org/) package for working with URLs: it extracts them from text with configurable regular expressions, and parses them into granular components.
 
 ## Resources
 
@@ -11,19 +11,16 @@
 - [Usage](#usage)
 	- [Extraction](#extraction)
 	- [Parsing](#parsing)
-	- [Key Access](#key-access)
+		- [Key Access](#key-access)
 	- [Normalization](#normalization)
-- [Data Packages](#data-packages)
 - [Contributing](#contributing)
 - [Licensing](#licensing)
 
 ## Features
 
 - **URL Extraction:** Composed, longest-match regular expressions that find fully-qualified URLs, scheme-less host URLs, email addresses, and relative paths in any text, plus fine-grained functional options and exported pattern building blocks.
-- **URL Parsing:** Extends [`net/url`](https://pkg.go.dev/net/url) with a decomposition of the host into subdomain, SLD, and TLD, matched exactly against official and pseudo TLD lists — including multi-label public suffixes such as `co.uk` — via binary search.
-- **Key Access:** Component lookup by name (`scheme`, `host`, `port`, `subdomain`, `sld`, `tld`, `apex`, `path`, `query`, `fragment`, and more).
+- **URL Parsing:** Extends [`net/url`](https://pkg.go.dev/net/url) with a decomposition of the host into subdomain, SLD, and TLD, matched exactly against the embedded Public Suffix List — including multi-label public suffixes such as `co.uk` — with label-aware lookups that never match inside a longer suffix.
 - **Normalization:** Canonicalization — lowercase scheme and host, default-port removal, dot-segment removal, sorted query parameters — plus per-host scheme inference with `InferScheme`.
-- **Standard Library Only:** No third-party runtime dependencies; the `schemes`, `tlds`, and `unicodes` data packages are regenerated from public sources with `go generate`.
 
 ## Installation
 
@@ -136,11 +133,13 @@ func main() {
 Available configurations:
 
 - `WithDefaultScheme(scheme)` — parse scheme-less URLs like `example.com/path` as absolute URLs with the given scheme. A scheme-less `host:port` input (digits after the colon, e.g. `example.com:8080/api`) is treated as a host and gets the default scheme; any other first-path-segment colon — an opaque URI such as `mailto:user@example.com` — already carries a scheme and is left unchanged.
-- `WithTLDs("custom", ...)` — replace the recognized TLD set (the union of the official and pseudo lists by default).
+- `WithIgnorePrivate()` — use only the ICANN section of the embedded Public Suffix List, excluding private suffixes such as `blogspot.com` and `s3.amazonaws.com`. The implicit `*` rule is kept, so unknown TLDs still become `TopLevelDomain`. For example, `foo.blogspot.com` yields `Subdomain="foo"`, `SLD="blogspot"`, `TLD="com"` instead of `Subdomain=""`, `SLD="foo"`, `TLD="blogspot.com"`.
 
-Hosts are decomposed deterministically: IP literals get a nil `Domain`; a single-label host such as `localhost` lands wholly in `SecondLevelDomain`; a host with no recognized TLD is decomposed positionally with `TopLevelDomain` left empty; a host that is entirely a known suffix (e.g. `co.uk`) lands wholly in `TopLevelDomain`. Punycode (`xn--`) TLDs are not in the generated TLD list, so the parser does not recognize them — the extractor matches them.
+Hosts are decomposed with the embedded Public Suffix List: IP literals get a nil `Domain`; a single-label host such as `localhost` lands wholly in `SecondLevelDomain`; the most specific matching rule — including private, wildcard, exception, and punycode rules — supplies `TopLevelDomain`, with the label before it in `SecondLevelDomain` and the rest in `Subdomain`; a host that is itself a public suffix (e.g. `co.uk`) lands wholly in `TopLevelDomain`. Unknown TLDs use the implicit `*` rule, so the last label becomes `TopLevelDomain`.
 
-### Key Access
+`Domain.Apex()` returns the registrable domain (SLD plus TLD). For `google.blogspot.com`, both this package and [`weppos/publicsuffix-go`](https://github.com/weppos/publicsuffix-go)'s `Domain` include the private `blogspot.com` suffix by default: `Apex()` is `google.blogspot.com`, and weppos returns `google.blogspot.com`. With `WithIgnorePrivate()`, this package gives `SLD="blogspot"`, `TLD="com"`, and `Apex() == "blogspot.com"`, while weppos with `IgnorePrivate: true` returns `blogspot.com`.
+
+#### Key Access
 
 `URL.Key` returns a single component by name:
 
@@ -206,14 +205,6 @@ func main() {
 	fmt.Println(hqgourlparser.InferScheme("localhost:8080")) // "http"
 	fmt.Println(hqgourlparser.InferScheme("example.com"))    // "https"
 }
-```
-
-## Data Packages
-
-The `schemes`, `tlds`, and `unicodes` packages hold the categorized data the parser and extractor build on: official, unofficial, and no-authority URL schemes; official and pseudo TLDs (including multi-label public suffixes); and RFC 3987 Unicode character ranges. The official scheme list tracks the active IANA registry — Historical and obsolete entries are excluded. They are regenerated from public sources with:
-
-```bash
-go generate ./...
 ```
 
 ## Contributing

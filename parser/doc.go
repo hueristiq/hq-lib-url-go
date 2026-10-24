@@ -17,8 +17,9 @@
 //     default scheme; any other URL whose first path segment contains ":" — an opaque
 //     URI such as "mailto:user@example.com" — already carries a scheme per RFC 3986 and
 //     is left unchanged.
-//   - [WithTLDs] replaces the recognized TLD set — the union of the official and pseudo
-//     TLD lists from the tlds package by default.
+//   - [WithIgnorePrivate] restricts the embedded Public Suffix List to its ICANN
+//     section, excluding private-domain suffixes such as "blogspot.com". The implicit
+//     "*" rule is preserved.
 //
 // # Domain decomposition
 //
@@ -28,24 +29,24 @@
 //   - A URL without a host (a relative reference or an opaque URI) yields a non-nil but
 //     zero Domain.
 //   - A single-label host (e.g. "localhost") lands wholly in
-//     [Domain.SecondLevelDomain], even if the label happens to be a known TLD.
-//   - When no suffix of the host is a recognized TLD, the host is decomposed
-//     positionally — the labels before the last two land in [Domain.Subdomain], the
-//     second to last label lands in [Domain.SecondLevelDomain] — and
-//     [Domain.TopLevelDomain] is left empty: the last label occupies the TLD position
-//     but is not recognized.
-//   - When the entire host is a recognized suffix (e.g. "co.uk"), it lands wholly in
+//     [Domain.SecondLevelDomain].
+//   - By default the embedded Public Suffix List supplies the rules: its ICANN and
+//     private sections, wildcard rules (`*.ck`), exception rules (`!www.ck`), and
+//     A-labels. [WithIgnorePrivate] drops the private section. The most specific matching
+//     rule determines [Domain.TopLevelDomain]; the label before it lands in
+//     [Domain.SecondLevelDomain], and the remaining labels in [Domain.Subdomain].
+//   - When the entire host is a public suffix (e.g. "co.uk"), it lands wholly in
 //     [Domain.TopLevelDomain].
-//   - Otherwise the longest recognized suffix lands in [Domain.TopLevelDomain], the
-//     label before it in [Domain.SecondLevelDomain], and the remaining labels in
-//     [Domain.Subdomain].
+//   - An unknown TLD under the default rules uses the implicit "*" rule, so the last
+//     label becomes [Domain.TopLevelDomain], matching the reference Public Suffix List
+//     algorithm.
+//   - A zero-value Parser has no rule set and decomposes the host positionally: the
+//     labels before the last two land in [Domain.Subdomain], the second to last label
+//     lands in [Domain.SecondLevelDomain], and [Domain.TopLevelDomain] is left empty.
 //
 // Matching is case-insensitive and ignores a trailing root dot; the Domain components
-// are stored lowercase. TLD lookup is an exact match against a sorted list via binary
-// search, so it never depends on the list's source order and never confuses a substring
-// of a TLD with the TLD itself. The generated TLD list excludes punycode (xn--) TLDs, so
-// hosts ending in one (e.g. "example.xn--p1ai") are not recognized here — while the
-// extractor package matches them.
+// are stored lowercase. Rule lookup is exact at label boundaries, so a label is never
+// confused with a substring of a longer suffix.
 //
 // # Key access
 //
@@ -61,5 +62,33 @@
 // query parameters sorted by key. [InferScheme] guesses a scheme for a host that is
 // missing one — "http" for local targets, "https" otherwise.
 //
-// The implementation relies on the Go standard library only.
+// # Comparison with weppos/publicsuffix-go
+//
+// The github.com/weppos/publicsuffix-go/publicsuffix package solves a related
+// problem with a domain-only API. The main differences:
+//
+//   - [Parser.Parse] takes a URL and keeps its scheme, host, path, query, and
+//     fragment; weppos takes a bare domain name.
+//   - The result here is a [URL] with a [Domain] (Subdomain, SecondLevelDomain,
+//     TopLevelDomain) and [Domain.Apex]. weppos returns a DomainName with TLD,
+//     SLD, TRD, and the matched Rule, plus Domain for the registrable name.
+//   - This package always decomposes: a host that is itself a public suffix lands
+//     wholly in TopLevelDomain, a single label lands in SecondLevelDomain, and an
+//     IP literal yields a nil Domain. weppos reports an error for a name with no
+//     registrable domain, such as a public suffix or a single label.
+//   - Both fall back to the implicit "*" rule for unknown TLDs; weppos exposes
+//     FindOptions.DefaultRule to change that behavior.
+//   - Private suffixes are included by default. [WithIgnorePrivate] excludes them
+//     here, so "google.blogspot.com" decomposes under "com"; weppos uses
+//     FindOptions{IgnorePrivate: true} and Domain returns "blogspot.com".
+//   - This package ships fixed embedded lists. weppos can load lists from files or
+//     strings, keep multiple lists, and exposes AddRule and Size.
+//   - This package embeds U-label and A-label rules and matches either form;
+//     weppos stores A-labels and expects ASCII input.
+//   - [Parser.Parse] handles ports, paths, relative references, and IP literals.
+//     weppos treats its argument as a domain and also implements
+//     net/http/cookiejar.PublicSuffixList, which this package does not.
+//
+// The runtime implementation relies on the Go standard library only; the psl data
+// generator uses golang.org/x/net/idna to produce A-labels.
 package parser
