@@ -20,6 +20,11 @@
 //   - [WithIgnorePrivate] restricts the embedded Public Suffix List to its ICANN
 //     section, excluding private-domain suffixes such as "blogspot.com". The implicit
 //     "*" rule is preserved.
+//   - [WithLenient] repairs invalid percent escapes before parsing, so
+//     "https://example.com/%invalid" parses instead of failing. It does not relax host
+//     validation, so an invalid authority such as "http://exa mple.com" still fails.
+//     [RepairInvalidEscapes] exposes the same repair for callers that parse with
+//     net/url directly.
 //
 // # Domain decomposition
 //

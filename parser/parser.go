@@ -20,7 +20,8 @@ import (
 //     installs the full embedded list, [WithIgnorePrivate] installs the ICANN-only list,
 //     and a nil value (the zero-value Parser) decomposes hosts positionally.
 type Parser struct {
-	scheme string
+	scheme  string
+	lenient bool
 
 	rules *psl.List
 }
@@ -41,7 +42,8 @@ func (p *Parser) SetDefaultScheme(scheme string) {
 // Parse converts a raw URL string into a URL struct that encapsulates both the standard
 // URL components (parsed by net/url) and the decomposed domain components. If a default
 // scheme has been set (via SetDefaultScheme), it is applied to the raw URL string when
-// missing.
+// missing. In lenient mode (see [WithLenient]), a failed parse caused by an invalid
+// percent escape is retried after [RepairInvalidEscapes] repairs the input.
 //
 // The host is decomposed into subdomain, SLD, and TLD as follows:
 //
@@ -78,6 +80,12 @@ func (p *Parser) Parse(raw string) (parsed *URL, err error) {
 	}
 
 	u, err := url.Parse(raw)
+	if err != nil && p.lenient {
+		if repaired := RepairInvalidEscapes(raw); repaired != raw {
+			u, err = url.Parse(repaired)
+		}
+	}
+
 	if err != nil {
 		return nil, fmt.Errorf("parser.Parse: %w", err)
 	}
@@ -259,5 +267,25 @@ func WithDefaultScheme(scheme string) (f OptionFunc) {
 func WithIgnorePrivate() (f OptionFunc) {
 	return func(parser *Parser) {
 		parser.rules = psl.ICANN
+	}
+}
+
+// WithLenient returns an OptionFunc that enables lenient URL parsing: when
+// [net/url.Parse] rejects a URL because of an invalid percent escape, the parser
+// repairs the escape with [RepairInvalidEscapes] and parses again.
+//
+// It only repairs percent escapes. It does not relax host validation or accept
+// invalid authority characters, so a URL such as "http://exa mple.com" still
+// fails. Strict parsing is the default.
+//
+// Parameters:
+//
+//	none.
+//
+// Returns:
+//   - f (OptionFunc): an OptionFunc function that enables lenient parsing.
+func WithLenient() (f OptionFunc) {
+	return func(parser *Parser) {
+		parser.lenient = true
 	}
 }

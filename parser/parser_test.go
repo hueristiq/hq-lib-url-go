@@ -736,3 +736,91 @@ func Test_Parser_zeroValue(t *testing.T) {
 
 	assert.Equal(t, &parser.Domain{Subdomain: "a", SecondLevelDomain: "b"}, parsed.Domain)
 }
+
+func TestParse_Lenient(t *testing.T) {
+	t.Parallel()
+
+	lenient := parser.New(
+		parser.WithDefaultScheme("http"),
+		parser.WithLenient(),
+	)
+
+	t.Run("invalid escape", func(t *testing.T) {
+		t.Parallel()
+
+		parsed, err := lenient.Parse("https://scanme.sh/%invalid")
+
+		require.NoError(t, err)
+		require.NotNil(t, parsed)
+
+		assert.Equal(t, "https", parsed.Scheme)
+		assert.Equal(t, "scanme.sh", parsed.Host)
+		assert.Equal(t, "/%invalid", parsed.Path)
+		assert.Empty(t, parsed.RawPath, "Expected net/url to encode the repaired path directly")
+		assert.Equal(t, "/%25invalid", parsed.EscapedPath())
+	})
+
+	t.Run("preserved encoded path", func(t *testing.T) {
+		t.Parallel()
+
+		parsed, err := lenient.Parse("https://scanme.sh/w%0d%2e/")
+
+		require.NoError(t, err)
+		require.NotNil(t, parsed)
+
+		assert.Equal(t, "https", parsed.Scheme)
+		assert.Equal(t, "scanme.sh", parsed.Host)
+		assert.Equal(t, "/w\r./", parsed.Path)
+		assert.Equal(t, "/w%0d%2e/", parsed.RawPath)
+		assert.Equal(t, "/w%0d%2e/", parsed.EscapedPath())
+	})
+
+	t.Run("scheme-less host with raw query", func(t *testing.T) {
+		t.Parallel()
+
+		const rawQuery = "some'param=`'+OR+ORDER+BY+1--"
+
+		parsed, err := lenient.Parse("scanme.sh/with/path?" + rawQuery)
+
+		require.NoError(t, err)
+		require.NotNil(t, parsed)
+
+		assert.Equal(t, "http", parsed.Scheme)
+		assert.Equal(t, "scanme.sh", parsed.Host)
+		assert.Equal(t, "/with/path", parsed.Path)
+		assert.Equal(t, rawQuery, parsed.RawQuery)
+	})
+
+	t.Run("valid escape is not double encoded", func(t *testing.T) {
+		t.Parallel()
+
+		parsed, err := lenient.Parse("https://scanme.sh/a%2Fb")
+
+		require.NoError(t, err)
+		require.NotNil(t, parsed)
+
+		assert.Equal(t, "/a/b", parsed.Path)
+		assert.Equal(t, "/a%2Fb", parsed.RawPath)
+		assert.Equal(t, "/a%2Fb", parsed.EscapedPath())
+	})
+
+	t.Run("invalid host still fails", func(t *testing.T) {
+		t.Parallel()
+
+		parsed, err := lenient.Parse("http://exa mple.com")
+
+		require.Error(t, err)
+		assert.Nil(t, parsed)
+	})
+
+	t.Run("strict default still rejects", func(t *testing.T) {
+		t.Parallel()
+
+		strict := parser.New(parser.WithDefaultScheme("http"))
+
+		parsed, err := strict.Parse("https://scanme.sh/%invalid")
+
+		require.Error(t, err)
+		assert.Nil(t, parsed)
+	})
+}
