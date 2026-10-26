@@ -6,25 +6,18 @@
 // reconnaissance tools, and log analyzers that group or filter by registrable domain —
 // where embedding [net/url.URL] keeps the result compatible with existing HTTP libraries.
 //
+// # Entry points
+//
+// [New] returns a [Parser], and [Parser.Parse] converts a raw URL string into a [URL].
+// [RepairInvalidEscapes] repairs invalid percent escapes for callers that parse with
+// [net/url] directly.
+//
 // # Parsing
 //
-// [New] returns a [Parser]; [Parser.Parse] converts a raw URL string into a [URL]. The
-// behavior is set through functional options:
-//
-//   - [WithDefaultScheme] applies a scheme to URLs that lack one, so "example.com/path"
-//     parses as a host plus path instead of a relative reference. A scheme-less
-//     "host:port" input (digits after the colon) is treated as a host and gets the
-//     default scheme; any other URL whose first path segment contains ":" — an opaque
-//     URI such as "mailto:user@example.com" — already carries a scheme per RFC 3986 and
-//     is left unchanged.
-//   - [WithIgnorePrivate] restricts the embedded Public Suffix List to its ICANN
-//     section, excluding private-domain suffixes such as "blogspot.com". The implicit
-//     "*" rule is preserved.
-//   - [WithLenient] repairs invalid percent escapes before parsing, so
-//     "https://example.com/%invalid" parses instead of failing. It does not relax host
-//     validation, so an invalid authority such as "http://exa mple.com" still fails.
-//     [RepairInvalidEscapes] exposes the same repair for callers that parse with
-//     net/url directly.
+// [Parser.Parse] keeps the standard components — scheme, user info, host, port, path,
+// query, and fragment — in the embedded [net/url.URL] and adds the host decomposition
+// described below. Host validation and strict percent-escape handling follow net/url;
+// [WithLenient] relaxes the latter.
 //
 // # Domain decomposition
 //
@@ -96,4 +89,31 @@
 //
 // The runtime implementation relies on the Go standard library only; the psl data
 // generator uses golang.org/x/net/idna to produce A-labels.
+//
+// # Configuration
+//
+// Behavior is set through functional options passed to [New]:
+//
+//   - [WithDefaultScheme] applies a scheme to URLs that lack one, so "example.com/path"
+//     parses as a host plus path instead of a relative reference. A scheme-less
+//     "host:port" input (digits after the colon) is treated as a host and gets the
+//     default scheme; any other URL whose first path segment contains ":" — an opaque
+//     URI such as "mailto:user@example.com" — already carries a scheme per RFC 3986 and
+//     is left unchanged.
+//   - [WithIgnorePrivate] restricts the embedded Public Suffix List to its ICANN
+//     section, excluding private-domain suffixes such as "blogspot.com". The implicit
+//     "*" rule is preserved.
+//   - [WithLenient] repairs invalid percent escapes before parsing, so
+//     "https://example.com/%invalid" parses instead of failing. It does not relax host
+//     validation, so an invalid authority such as "http://exa mple.com" still fails.
+//
+// A nil OptionFunc is ignored. The With* helpers cover common settings, and callers may
+// write custom options because [Parser] is exported.
+//
+// # Concurrency
+//
+// A Parser is safe for concurrent use once configured: [Parser.Parse] only reads the
+// configured settings. The Set* methods and options mutate those settings and must not
+// run concurrently with parsing or with each other. Parsed [URL] and [Domain] values are
+// independent and safe to share across goroutines.
 package parser

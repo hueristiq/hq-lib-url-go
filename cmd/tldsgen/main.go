@@ -111,10 +111,6 @@ func generate(output string) (err error) {
 
 // getTLDsFromText reads the curated TLD list from tldsTextPath.
 //
-// Parameters:
-//
-//	none.
-//
 // Returns:
 //   - TLDs ([]string): the non-empty lines of the curated list.
 //   - err (error): non-nil when the file cannot be opened or read.
@@ -148,10 +144,6 @@ func getTLDsFromText() (TLDs []string, err error) {
 // getTLDsFromIANA downloads the IANA TLD list.
 //
 // Comment lines and punycode (xn--) entries are skipped.
-//
-// Parameters:
-//
-//	none.
 //
 // Returns:
 //   - TLDs ([]string): the lowercased IANA TLDs.
@@ -204,10 +196,6 @@ func getTLDsFromIANA() (TLDs []string, err error) {
 // The PSL is only approximated: wildcard rules ("*." prefixes) are treated as plain
 // suffixes, and exception rules ("!" prefixes) are ignored entirely, so the generated
 // list may both over- and under-approximate the true public suffix set.
-//
-// Parameters:
-//
-//	none.
 //
 // Returns:
 //   - eTLDs ([]string): the effective TLDs from the ICANN section.

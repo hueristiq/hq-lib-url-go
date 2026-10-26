@@ -6,6 +6,11 @@
 // second-level domain, and suffix — where a maintained list of known suffixes is more
 // useful than positional guessing.
 //
+// # Entry points
+//
+// [Official] and [Pseudo] are the exported TLD lists. They are read-only shared data;
+// do not modify them.
+//
 // # Lists
 //
 //   - [Official] holds the union of the IANA TLD list and the ICANN section of the

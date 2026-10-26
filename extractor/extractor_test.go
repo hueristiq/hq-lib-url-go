@@ -636,3 +636,10 @@ func Test_Extractor_CompileRegex_dataScheme(t *testing.T) {
 		})
 	}
 }
+
+func Test_Extractor_New_IgnoresNilOptions(t *testing.T) {
+	t.Parallel()
+
+	e := extractor.New(nil)
+	require.NotNil(t, e)
+}

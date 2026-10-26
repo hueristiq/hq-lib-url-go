@@ -13,6 +13,7 @@
 	- [Parsing](#parsing)
 		- [Key Access](#key-access)
 	- [Normalization](#normalization)
+- [Configuration](#configuration)
 - [Contributing](#contributing)
 - [Licensing](#licensing)
 
@@ -27,8 +28,10 @@
 To install `hq-lib-url-go`, run the following command in your Go project:
 
 ```bash
-go get -v -u github.com/hueristiq/hq-lib-url-go
+go get github.com/hueristiq/hq-lib-url-go@latest
 ```
+
+Requires Go 1.26.3 or later.
 
 ## Usage
 
@@ -40,6 +43,8 @@ import (
 	hqgourlparser "github.com/hueristiq/hq-lib-url-go/parser"
 )
 ```
+
+The snippets below are illustrative.
 
 ### Extraction
 
@@ -75,19 +80,15 @@ func main() {
 }
 ```
 
-Available configurations:
+For example, restrict schemes with `WithSchemePattern`:
 
-- `WithScheme()` — require a scheme, so only fully-qualified URLs match.
-- `WithHost()` — additionally match scheme-less host URLs and bare email addresses (emails land in the `relaxedEmail` subexpression).
-- `WithSchemePattern(pattern)` / `WithHostPattern(pattern)` — restrict the scheme or host with a custom pattern, e.g.:
+```go
+e := hqgourlextractor.New(
+	hqgourlextractor.WithSchemePattern(`(?:https?|ftp)://`),
+)
+```
 
-	```go
-	e := hqgourlextractor.New(
-		hqgourlextractor.WithSchemePattern(`(?:https?|ftp)://`),
-	)
-	```
-
-- With no options, relative paths such as `/docs/guide` match too.
+With no options, relative paths such as `/docs/guide` match too. See [Configuration](#configuration) for the full option list.
 
 The pattern building blocks are exported (`SchemePattern`, `KnownSchemePattern`, `IPv4Pattern`, `IPv6Pattern`, `PortPattern`, …) for reuse in custom configurations:
 
@@ -130,11 +131,7 @@ func main() {
 }
 ```
 
-Available configurations:
-
-- `WithDefaultScheme(scheme)` — parse scheme-less URLs like `example.com/path` as absolute URLs with the given scheme. A scheme-less `host:port` input (digits after the colon, e.g. `example.com:8080/api`) is treated as a host and gets the default scheme; any other first-path-segment colon — an opaque URI such as `mailto:user@example.com` — already carries a scheme and is left unchanged.
-- `WithIgnorePrivate()` — use only the ICANN section of the embedded Public Suffix List, excluding private suffixes such as `blogspot.com` and `s3.amazonaws.com`. The implicit `*` rule is kept, so unknown TLDs still become `TopLevelDomain`. For example, `foo.blogspot.com` yields `Subdomain="foo"`, `SLD="blogspot"`, `TLD="com"` instead of `Subdomain=""`, `SLD="foo"`, `TLD="blogspot.com"`.
-- `WithLenient()` — when `net/url.Parse` rejects a URL because of an invalid percent escape such as `https://example.com/%invalid`, repair the escape with `RepairInvalidEscapes` and parse again. Strict parsing remains the default. Lenient mode does not relax host validation, so `http://exa mple.com` still fails.
+See [Configuration](#configuration) for the full option list.
 
 Hosts are decomposed with the embedded Public Suffix List: IP literals get a nil `Domain`; a single-label host such as `localhost` lands wholly in `SecondLevelDomain`; the most specific matching rule — including private, wildcard, exception, and punycode rules — supplies `TopLevelDomain`, with the label before it in `SecondLevelDomain` and the rest in `Subdomain`; a host that is itself a public suffix (e.g. `co.uk`) lands wholly in `TopLevelDomain`. Unknown TLDs use the implicit `*` rule, so the last label becomes `TopLevelDomain`.
 
@@ -207,6 +204,31 @@ func main() {
 	fmt.Println(hqgourlparser.InferScheme("example.com"))    // "https"
 }
 ```
+
+## Configuration
+
+Behavior is set through functional options passed to the constructors. Any option left unset falls back to its default.
+
+### Parser
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `WithDefaultScheme(scheme)` | no default scheme | Applies `scheme` to URLs that lack one. A scheme-less `host:port` is treated as a host; opaque URIs keep their own scheme. |
+| `WithIgnorePrivate()` | full Public Suffix List | Restricts the embedded list to its ICANN section, excluding private suffixes such as `blogspot.com`. |
+| `WithLenient()` | strict parsing | Repairs invalid percent escapes before parsing; host validation stays strict. |
+
+### Extractor
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `WithScheme()` | no scheme required | Requires a scheme, so only fully-qualified URLs match. |
+| `WithSchemePattern(pattern)` | built-in scheme pattern | Restricts the scheme with a custom pattern. |
+| `WithHost()` | hosts optional | Additionally matches scheme-less host URLs and bare email addresses. |
+| `WithHostPattern(pattern)` | built-in host pattern | Restricts the host with a custom pattern. |
+| `WithoutEmail()` | bare emails included | Excludes bare email addresses from extraction. |
+| `WithoutUserInfo()` | user info included | Excludes user info from the authority component; URLs degrade to their host and path. |
+
+The `With*` and `Without*` helpers cover common settings; because `OptionFunc` receives the exported `Parser` or `Extractor`, callers can also write custom options. Nil options are ignored.
 
 ## Contributing
 

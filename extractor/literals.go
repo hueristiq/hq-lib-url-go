@@ -11,34 +11,27 @@ const ExpressionPlaceholder = "EXPR"
 // LiteralGroup is a run of adjacent string literals joined by the '+' operator in
 // JavaScript source text. It covers plain quoted strings, template literals
 // with ${...} interpolations, and unknown expressions between literals.
+//
+// Fields:
+//   - Start (int): byte offset of the first literal's opening quote.
+//   - End (int): byte offset just past the last literal's closing quote.
+//   - Pieces ([]string): escape-decoded contents of the group's literals, in order;
+//     unknown expressions contribute an empty piece.
+//   - HasExpr (bool): whether an expression with an unknown value (or a ${...}
+//     interpolation) participates in the group.
+//   - exprJoins ([]bool): per piece after the first, whether the join preceding the
+//     piece is an unknown expression rather than a literal-to-literal concatenation; a
+//     missing entry is treated as a literal join.
 type LiteralGroup struct {
-	// Start is the byte offset of the first literal's opening quote.
-	Start int
-
-	// End is the byte offset just past the last literal's closing quote.
-	End int
-
-	// Pieces holds the escape-decoded contents of the group's literals, in
-	// order. Unknown expressions contribute an empty piece.
-	Pieces []string
-
-	// HasExpr reports whether an expression with an unknown value (or a
-	// ${...} interpolation) participates in the group.
-	HasExpr bool
-
-	// exprJoins marks, per piece after the first, whether the join preceding
-	// the piece is an unknown expression rather than a literal-to-literal
-	// concatenation. A missing entry, as happens for a value constructed
-	// outside the package, is treated as a literal join.
+	Start     int
+	End       int
+	Pieces    []string
+	HasExpr   bool
 	exprJoins []bool
 }
 
 // Collapsed returns the concatenation of the group's literal pieces with
 // ExpressionPlaceholder standing in for every unknown expression.
-//
-// Parameters:
-//
-//	none.
 //
 // Returns:
 //   - collapsed (string): the concatenated literal pieces, with

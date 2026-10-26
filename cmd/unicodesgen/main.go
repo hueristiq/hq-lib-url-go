@@ -76,10 +76,6 @@ func generate(output string) (err error) {
 // Parameters:
 //   - rt (*unicode.RangeTable): the range table to walk.
 //   - fn (func(rune)): the callback invoked for each rune.
-//
-// Returns:
-//
-//	none.
 func visit(rt *unicode.RangeTable, fn func(rune)) {
 	for _, r16 := range rt.R16 {
 		for r := rune(r16.Lo); r <= rune(r16.Hi); r += rune(r16.Stride) {

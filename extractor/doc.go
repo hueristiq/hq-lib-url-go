@@ -4,19 +4,16 @@
 // single composed pattern that understands schemes, hosts, ports, Unicode domains, and
 // email addresses is more useful than hand-rolled splitting.
 //
+// # Entry points
+//
+// [New] returns an [Extractor], and [Extractor.CompileRegex] compiles the configured
+// extractor into a [regexp.Regexp] tuned to find the longest match at each position,
+// returning an error when a custom pattern fails to compile.
+//
 // # Extraction
 //
-// [New] returns an [Extractor]; [Extractor.CompileRegex] compiles the configured
-// extractor into a [regexp.Regexp] tuned to find the longest match at each position,
-// returning an error when a custom pattern fails to compile. The behavior is set through
-// functional options:
-//
-//   - [WithScheme] requires a scheme, so only fully-qualified URLs match.
-//   - [WithSchemePattern] restricts the scheme with a custom pattern, e.g. "(?:https?://)".
-//   - [WithHost] additionally matches scheme-less URLs with a host and bare email
-//     addresses; emails land in the "relaxedEmail" subexpression.
-//   - [WithHostPattern] restricts the host with a custom pattern.
-//   - With no options, relative paths (e.g. "/docs/guide") match too.
+// The composed pattern understands schemes, hosts, ports, Unicode domains, and email
+// addresses. With no options, relative paths (e.g. "/docs/guide") match too.
 //
 // # Patterns
 //
@@ -60,4 +57,26 @@
 // overlap the enclosing group's Start/End range.
 //
 // The implementation relies on the Go standard library only.
+//
+// # Configuration
+//
+// Behavior is set through functional options passed to [New]:
+//
+//   - [WithScheme] requires a scheme, so only fully-qualified URLs match.
+//   - [WithSchemePattern] restricts the scheme with a custom pattern, e.g.
+//     "(?:https?://)".
+//   - [WithHost] additionally matches scheme-less URLs with a host and bare email
+//     addresses; emails land in the "relaxedEmail" subexpression.
+//   - [WithHostPattern] restricts the host with a custom pattern.
+//   - [WithoutEmail] excludes bare email addresses.
+//   - [WithoutUserInfo] excludes user info in the authority.
+//
+// A nil OptionFunc is ignored. The With* and Without* helpers cover common settings, and
+// callers may write custom options because [Extractor] is exported.
+//
+// # Concurrency
+//
+// An Extractor is safe for concurrent use once configured: [Extractor.CompileRegex] only
+// reads the configured settings. The Set* methods and options mutate those settings and
+// must not run concurrently with compilation or with each other.
 package extractor

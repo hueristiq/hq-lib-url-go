@@ -94,10 +94,6 @@ func generate(output string) (err error) {
 
 // fetchSchemesList downloads the IANA scheme registry and returns its active schemes.
 //
-// Parameters:
-//
-//	none.
-//
 // Returns:
 //   - schemes ([]string): the sorted, de-duplicated active scheme names.
 //   - err (error): non-nil when the registry cannot be fetched or parsed.

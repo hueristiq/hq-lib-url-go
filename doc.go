@@ -4,6 +4,12 @@
 // It suits text processing, data mining, and reconnaissance work — anywhere URLs must
 // be found in unstructured text or broken down into their constituent parts.
 //
+// # Entry points
+//
+// [parser.New] and [parser.Parser.Parse] turn a raw URL string into a structured value;
+// [extractor.New] and [extractor.Extractor.CompileRegex] build the regular expression
+// that finds URLs in text.
+//
 // # Packages
 //
 // The module is organized into focused packages:

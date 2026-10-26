@@ -34,13 +34,9 @@ type Extractor struct {
 // The generated pattern can match fully-qualified URLs (with schemes and hosts), email addresses,
 // and relative URLs, depending on the configuration.
 //
-// Parameters:
-//
-//	none.
-//
 // Returns:
-//   - regex (*regexp.Regexp): A compiled regular expression object, tuned to find the longest
-//     match at each position, that can be used to extract URLs from text.
+//   - regex (*regexp.Regexp): a compiled regular expression object, tuned to find the
+//     longest match at each position, that can be used to extract URLs from text.
 //   - err (error): a wrapped error when the composed pattern fails to compile, e.g. when a
 //     custom scheme or host pattern is invalid.
 //
@@ -174,14 +170,6 @@ func (e *Extractor) CompileRegex() (regex *regexp.Regexp, err error) {
 
 // SetScheme sets the Extractor to require URL schemes during extraction.
 // It marks the withScheme flag as true.
-//
-// Parameters:
-//
-//	none.
-//
-// Returns:
-//
-//	none.
 func (e *Extractor) SetScheme() {
 	e.withScheme = true
 }
@@ -191,10 +179,6 @@ func (e *Extractor) SetScheme() {
 //
 // Parameters:
 //   - pattern (string): a regex pattern to match URL schemes.
-//
-// Returns:
-//
-//	none.
 func (e *Extractor) SetSchemePattern(pattern string) {
 	e.SetScheme()
 
@@ -203,14 +187,6 @@ func (e *Extractor) SetSchemePattern(pattern string) {
 
 // SetHost sets the Extractor to require URL hosts during extraction.
 // It marks the withHost flag as true.
-//
-// Parameters:
-//
-//	none.
-//
-// Returns:
-//
-//	none.
 func (e *Extractor) SetHost() {
 	e.withHost = true
 }
@@ -220,10 +196,6 @@ func (e *Extractor) SetHost() {
 //
 // Parameters:
 //   - pattern (string): a regex pattern to match URL hosts.
-//
-// Returns:
-//
-//	none.
 func (e *Extractor) SetHostPattern(pattern string) {
 	e.SetHost()
 
@@ -234,14 +206,6 @@ func (e *Extractor) SetHostPattern(pattern string) {
 // pattern from extraction. Email addresses matched through the user info +
 // host URL form are unaffected; combine with SetWithoutUserInfo to exclude
 // both.
-//
-// Parameters:
-//
-//	none.
-//
-// Returns:
-//
-//	none.
 func (e *Extractor) SetWithoutEmail() {
 	e.withoutEmail = true
 }
@@ -250,14 +214,6 @@ func (e *Extractor) SetWithoutEmail() {
 // authority component of extracted URLs. URLs carrying user info degrade to
 // their host (and path); bare email addresses are unaffected, as they match
 // through the email pattern.
-//
-// Parameters:
-//
-//	none.
-//
-// Returns:
-//
-//	none.
 func (e *Extractor) SetWithoutUserInfo() {
 	e.withoutUserInfo = true
 }
@@ -265,16 +221,18 @@ func (e *Extractor) SetWithoutUserInfo() {
 // OptionFunc defines a functional option for configuring an Extractor instance.
 // It allows the caller to pass in configuration functions that modify the Extractor's
 // settings (e.g., requiring a scheme or host, or providing custom regex patterns).
+// A nil OptionFunc is ignored. The With* and Without* helpers cover common settings,
+// and callers may write custom options because [Extractor] is exported.
 //
 // Parameters:
 //   - extractor (*Extractor): the Extractor instance to configure.
-//
-// Returns:
-//
-//	none.
 type OptionFunc func(extractor *Extractor)
 
 // Interface defines the behavior that an Extractor must implement.
+//
+// Methods:
+//   - CompileRegex() (regex *regexp.Regexp, err error): compiles the configured
+//     extractor into a [regexp.Regexp].
 type Interface interface {
 	// CompileRegex constructs and compiles the regular expression pattern for URL
 	// extraction.
@@ -305,17 +263,15 @@ func New(ofs ...OptionFunc) (extractor *Extractor) {
 	extractor = &Extractor{}
 
 	for _, f := range ofs {
-		f(extractor)
+		if f != nil {
+			f(extractor)
+		}
 	}
 
 	return extractor
 }
 
 // WithScheme returns an OptionFunc function that configures the Extractor to require URL schemes in the extraction process.
-//
-// Parameters:
-//
-//	none.
 //
 // Returns:
 //   - f (OptionFunc): a function that sets the withScheme flag to true.
@@ -339,10 +295,6 @@ func WithSchemePattern(pattern string) (f OptionFunc) {
 }
 
 // WithHost returns an OptionFunc function that configures the Extractor to require URL hosts in the extraction process.
-//
-// Parameters:
-//
-//	none.
 //
 // Returns:
 //   - f (OptionFunc): a function that sets the withHost flag to true.
@@ -370,10 +322,6 @@ func WithHostPattern(pattern string) (f OptionFunc) {
 // matched through the user info + host URL form are unaffected; combine with
 // WithoutUserInfo to exclude both.
 //
-// Parameters:
-//
-//	none.
-//
 // Returns:
 //   - f (OptionFunc): a function that marks the withoutEmail flag as true.
 func WithoutEmail() (f OptionFunc) {
@@ -386,10 +334,6 @@ func WithoutEmail() (f OptionFunc) {
 // Extractor to exclude user info from the authority component of extracted
 // URLs. URLs carrying user info degrade to their host (and path); bare email
 // addresses are unaffected, as they match through the email pattern.
-//
-// Parameters:
-//
-//	none.
 //
 // Returns:
 //   - f (OptionFunc): a function that marks the withoutUserInfo flag as true.

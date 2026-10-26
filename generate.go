@@ -1,7 +1,8 @@
+package url
+
 // This file only holds the module's go:generate directives, which regenerate the data
 // packages (PSL rules, schemes, tlds, unicodes) from their public sources. The package
 // documentation lives in doc.go.
-package url
 
 //go:generate go run ./cmd/pslgen -output ./psl/rules.go
 //go:generate go run ./cmd/schemesgen -output ./schemes/schemes_official.go
