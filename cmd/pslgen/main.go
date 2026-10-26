@@ -86,10 +86,6 @@ func run(output string) (err error) {
 // Internationalized rules are emitted twice: once in their original form and once as
 // an A-label, so hosts in either notation match.
 //
-// Parameters:
-//
-//	none.
-//
 // Returns:
 //   - rules ([]rule): the parsed rules, sorted by value and kind.
 //   - version (string): the list's VERSION header, when present.

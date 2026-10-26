@@ -4,6 +4,11 @@
 // It suits work that must match IRIs (RFC 3987) rather than plain ASCII URIs, where a
 // generated, verified set of character ranges is more useful than a hand-curated one.
 //
+// # Entry points
+//
+// [AllowedUcsChar] and [AllowedUcsCharMinusPunc] are the exported character-class
+// contents. The values are constants and safe to share.
+//
 // # Sets
 //
 //   - [AllowedUcsChar] holds the RFC 3987 ucschar ranges with separators excluded.

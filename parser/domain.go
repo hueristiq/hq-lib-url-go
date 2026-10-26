@@ -2,12 +2,13 @@ package parser
 
 import "strings"
 
-// Domain represents a parsed domain name, broken down into three main components:
-//   - Subdomain: The subdomain part of the domain (e.g., "www" in "www.example.com").
-//   - SecondLevelDomain (SLD): The core part of the domain (e.g., "example" in "www.example.com").
-//   - TopLevelDomain (TLD): The recognized domain extension (e.g., "com" in "www.example.com").
+// Domain represents a parsed domain name, broken down into three main components.
 //
-// This structure is useful for analysis or manipulation of domain names.
+// Fields:
+//   - TopLevelDomain (string): recognized top-level domain (e.g. "com" or "co.uk").
+//   - SecondLevelDomain (string): label before the public suffix (e.g. "example" in
+//     "www.example.com").
+//   - Subdomain (string): labels before the second-level domain (e.g. "www").
 type Domain struct {
 	TopLevelDomain    string
 	SecondLevelDomain string
@@ -21,10 +22,6 @@ type Domain struct {
 //   - "www.example.com" when all components are provided.
 //   - "example.com" when the subdomain is empty.
 //   - "example" when only the SLD is provided.
-//
-// Parameters:
-//
-//	none.
 //
 // Returns:
 //   - domain (string): the reconstructed domain.
@@ -51,10 +48,6 @@ func (d *Domain) String() (domain string) {
 // Apex returns the apex (registrable) domain: the second-level domain joined with the
 // public suffix (e.g. "example.com" for "www.example.com"). When one of the two
 // components is empty, Apex returns the other.
-//
-// Parameters:
-//
-//	none.
 //
 // Returns:
 //   - apex (string): the apex domain.

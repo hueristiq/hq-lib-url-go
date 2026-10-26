@@ -8,12 +8,14 @@ import (
 // URL extends the standard [net/url.URL] struct by embedding it and adding a parsed view of
 // the host's domain components.
 //
-// The embedded *url.URL carries the standard URL components (scheme, user info, host, port,
-// path, query, fragment), while the Domain field holds the host decomposed into subdomain,
-// second-level domain, and top-level domain. Domain is nil when the host is an IP literal.
-//
 // This design enables seamless integration with existing HTTP libraries while providing
 // enhanced domain parsing functionality.
+//
+// Fields:
+//   - URL (*url.URL): embedded standard URL components (scheme, user info, host, port,
+//     path, query, fragment).
+//   - Domain (*Domain): host decomposed into subdomain, second-level domain, and
+//     top-level domain; nil when the host is an IP literal.
 type URL struct {
 	*url.URL
 
@@ -109,14 +111,6 @@ func (u *URL) Key(key string) (value string) {
 //
 // The fragment and user info are left untouched. Calling Normalize on a zero URL is a
 // no-op.
-//
-// Parameters:
-//
-//	none.
-//
-// Returns:
-//
-//	none.
 func (u *URL) Normalize() {
 	if u == nil || u.URL == nil {
 		return

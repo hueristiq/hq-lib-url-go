@@ -100,7 +100,7 @@ var (
 	// The exported patterns below are the building blocks of the composed extraction
 	// pattern. They are mutable variables only so they can be spliced into larger
 	// pattern strings; callers must not modify them.
-	//
+
 	// SchemePattern defines a general pattern for matching URL schemes.
 	// It matches any URL scheme that starts with an alphabetical character (a-z, A-Z), followed by
 	// any combination of letters, digits, dots (.), hyphens (-), or plus signs (+), and ends with "://".

@@ -824,3 +824,10 @@ func TestParse_Lenient(t *testing.T) {
 		assert.Nil(t, parsed)
 	})
 }
+
+func Test_Parser_New_IgnoresNilOptions(t *testing.T) {
+	t.Parallel()
+
+	p := parser.New(nil)
+	require.NotNil(t, p)
+}

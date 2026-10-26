@@ -16,6 +16,7 @@ import (
 //
 // Fields:
 //   - scheme (string): the default scheme (e.g., "http", "https") applied when missing.
+//   - lenient (bool): whether invalid percent escapes are repaired before parsing.
 //   - rules (*psl.List): the Public Suffix List rules used to decompose hosts. [New]
 //     installs the full embedded list, [WithIgnorePrivate] installs the ICANN-only list,
 //     and a nil value (the zero-value Parser) decomposes hosts positionally.
@@ -31,10 +32,6 @@ type Parser struct {
 //
 // Parameters:
 //   - scheme (string): the default scheme to use (e.g., "http", "https").
-//
-// Returns:
-//
-//	none.
 func (p *Parser) SetDefaultScheme(scheme string) {
 	p.scheme = scheme
 }
@@ -187,16 +184,18 @@ func (p *Parser) parseDomain(hostname string) (domain *Domain) {
 // OptionFunc defines a function type used for configuring a Parser instance. Options allow
 // customization of the Parser (e.g., setting a default scheme or custom TLDs) during
 // initialization. When the same option is supplied more than once, the last one wins.
+// A nil OptionFunc is ignored. The With* helpers cover common settings, and callers may
+// write custom options because [Parser] is exported.
 //
 // Parameters:
 //   - parser (*Parser): the Parser instance to configure.
-//
-// Returns:
-//
-//	none.
 type OptionFunc func(parser *Parser)
 
 // Interface defines the standard interface for URL parsing functionality.
+//
+// Methods:
+//   - Parse(raw string) (parsed *URL, err error): converts a raw URL string into a
+//     parsed [URL].
 type Interface interface {
 	// Parse converts a raw URL string into a parsed URL struct.
 	//
@@ -226,7 +225,9 @@ func New(ofs ...OptionFunc) (parser *Parser) {
 	parser = &Parser{rules: psl.Default}
 
 	for _, f := range ofs {
-		f(parser)
+		if f != nil {
+			f(parser)
+		}
 	}
 
 	return parser
@@ -258,10 +259,6 @@ func WithDefaultScheme(scheme string) (f OptionFunc) {
 //
 // The default parser includes private suffixes.
 //
-// Parameters:
-//
-//	none.
-//
 // Returns:
 //   - f (OptionFunc): an OptionFunc function that applies the ICANN-only list.
 func WithIgnorePrivate() (f OptionFunc) {
@@ -277,10 +274,6 @@ func WithIgnorePrivate() (f OptionFunc) {
 // It only repairs percent escapes. It does not relax host validation or accept
 // invalid authority characters, so a URL such as "http://exa mple.com" still
 // fails. Strict parsing is the default.
-//
-// Parameters:
-//
-//	none.
 //
 // Returns:
 //   - f (OptionFunc): an OptionFunc function that enables lenient parsing.

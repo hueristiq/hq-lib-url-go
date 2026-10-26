@@ -6,6 +6,11 @@
 // extractors, and link classifiers — where a maintained, categorized list is more
 // useful than a hand-written one.
 //
+// # Entry points
+//
+// [Official], [Unofficial], and [NoAuthority] are the exported scheme lists. They are
+// read-only shared data; do not modify them.
+//
 // # Lists
 //
 //   - [Official] holds the active IANA-assigned schemes — Historical and otherwise
