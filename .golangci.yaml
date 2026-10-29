@@ -112,6 +112,20 @@ linters:
         goconst:
             min-len: 2
             min-occurrences: 3
+        importas:
+            alias:
+                - pkg: github.com/hueristiq/hq-lib-url-go/extractor
+                  alias: hqgourlextractor
+                - pkg: github.com/hueristiq/hq-lib-url-go/parser
+                  alias: hqgourlparser
+                - pkg: github.com/hueristiq/hq-lib-url-go/psl
+                  alias: hqgourlpsl
+                - pkg: github.com/hueristiq/hq-lib-url-go/schemes
+                  alias: hqgourlschemes
+                - pkg: github.com/hueristiq/hq-lib-url-go/tlds
+                  alias: hqgourltlds
+                - pkg: github.com/hueristiq/hq-lib-url-go/unicodes
+                  alias: hqgourlunicodes
         gocritic:
             enabled-tags:
                 - performance

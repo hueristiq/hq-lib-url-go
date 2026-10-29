@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/hueristiq/hq-lib-url-go/extractor"
+	hqgourlextractor "github.com/hueristiq/hq-lib-url-go/extractor"
 )
 
 func Test_JSLiteralGroups(t *testing.T) {
@@ -249,7 +249,7 @@ func Test_JSLiteralGroups(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			t.Parallel()
 
-			groups := extractor.JSLiteralGroups(testCase.in)
+			groups := hqgourlextractor.JSLiteralGroups(testCase.in)
 
 			collapsed := make([]string, 0, len(groups))
 
@@ -265,7 +265,7 @@ func Test_JSLiteralGroups(t *testing.T) {
 func Test_Groups_flags(t *testing.T) {
 	t.Parallel()
 
-	groups := extractor.JSLiteralGroups(`var u = "https://" + host + "/api"; var v = "plain";`)
+	groups := hqgourlextractor.JSLiteralGroups(`var u = "https://" + host + "/api"; var v = "plain";`)
 
 	require.Len(t, groups, 2)
 
@@ -280,7 +280,7 @@ func Test_Groups_flags(t *testing.T) {
 func Test_Groups_offsets(t *testing.T) {
 	t.Parallel()
 
-	groups := extractor.JSLiteralGroups(`var u = "abc" + "def";`)
+	groups := hqgourlextractor.JSLiteralGroups(`var u = "abc" + "def";`)
 
 	require.Len(t, groups, 1)
 
@@ -291,8 +291,8 @@ func Test_Groups_offsets(t *testing.T) {
 func Test_LiteralGroup_Collapsed_externalConstruction(t *testing.T) {
 	t.Parallel()
 
-	assert.Equal(t, "ab", extractor.LiteralGroup{Pieces: []string{"a", "b"}}.Collapsed())
-	assert.Empty(t, extractor.LiteralGroup{}.Collapsed())
+	assert.Equal(t, "ab", hqgourlextractor.LiteralGroup{Pieces: []string{"a", "b"}}.Collapsed())
+	assert.Empty(t, hqgourlextractor.LiteralGroup{}.Collapsed())
 }
 
 func Test_Groups_nestedOffsets(t *testing.T) {
@@ -300,7 +300,7 @@ func Test_Groups_nestedOffsets(t *testing.T) {
 
 	text := `var u = "a" + fn("url") + "b";`
 
-	groups := extractor.JSLiteralGroups(text)
+	groups := hqgourlextractor.JSLiteralGroups(text)
 
 	require.Len(t, groups, 2)
 	assert.Equal(t, "aEXPRb", groups[0].Collapsed())

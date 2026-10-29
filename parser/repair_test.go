@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/hueristiq/hq-lib-url-go/parser"
+	hqgourlparser "github.com/hueristiq/hq-lib-url-go/parser"
 )
 
 func TestRepairInvalidEscapes(t *testing.T) {
@@ -57,7 +57,7 @@ func TestRepairInvalidEscapes(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			assert.Equal(t, test.want, parser.RepairInvalidEscapes(test.raw))
+			assert.Equal(t, test.want, hqgourlparser.RepairInvalidEscapes(test.raw))
 		})
 	}
 }

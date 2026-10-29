@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/hueristiq/hq-lib-url-go/psl"
+	hqgourlpsl "github.com/hueristiq/hq-lib-url-go/psl"
 )
 
 // Parser is responsible for converting raw URL strings into the URL struct that includes
@@ -24,21 +24,12 @@ type Parser struct {
 	scheme  string
 	lenient bool
 
-	rules *psl.List
-}
-
-// SetDefaultScheme sets the default scheme for the Parser. This scheme is applied to URL
-// strings that do not already include a scheme.
-//
-// Parameters:
-//   - scheme (string): the default scheme to use (e.g., "http", "https").
-func (p *Parser) SetDefaultScheme(scheme string) {
-	p.scheme = scheme
+	rules *hqgourlpsl.List
 }
 
 // Parse converts a raw URL string into a URL struct that encapsulates both the standard
 // URL components (parsed by net/url) and the decomposed domain components. If a default
-// scheme has been set (via SetDefaultScheme), it is applied to the raw URL string when
+// scheme has been set (via [WithDefaultScheme]), it is applied to the raw URL string when
 // missing. In lenient mode (see [WithLenient]), a failed parse caused by an invalid
 // percent escape is retried after [RepairInvalidEscapes] repairs the input.
 //
@@ -191,26 +182,6 @@ func (p *Parser) parseDomain(hostname string) (domain *Domain) {
 //   - parser (*Parser): the Parser instance to configure.
 type OptionFunc func(parser *Parser)
 
-// Interface defines the standard interface for URL parsing functionality.
-//
-// Methods:
-//   - Parse(raw string) (parsed *URL, err error): converts a raw URL string into a
-//     parsed [URL].
-type Interface interface {
-	// Parse converts a raw URL string into a parsed URL struct.
-	//
-	// Parameters:
-	//   - raw (string): the raw URL string to parse.
-	//
-	// Returns:
-	//   - parsed (*URL): the parsed URL with domain details.
-	//   - err (error): non-nil when the URL cannot be parsed.
-	Parse(raw string) (parsed *URL, err error)
-}
-
-// Compile-time guard ensuring [Parser] satisfies [Interface].
-var _ Interface = (*Parser)(nil)
-
 // New creates and initializes a new Parser instance with default settings: no default
 // scheme, and the full embedded Public Suffix List (ICANN and private sections) as the
 // rule set. [WithIgnorePrivate] restricts it to the ICANN section. Additional
@@ -222,7 +193,7 @@ var _ Interface = (*Parser)(nil)
 // Returns:
 //   - parser (*Parser): the newly created Parser instance.
 func New(ofs ...OptionFunc) (parser *Parser) {
-	parser = &Parser{rules: psl.Default}
+	parser = &Parser{rules: hqgourlpsl.Default}
 
 	for _, f := range ofs {
 		if f != nil {
@@ -246,7 +217,7 @@ func New(ofs ...OptionFunc) (parser *Parser) {
 //     instance.
 func WithDefaultScheme(scheme string) (f OptionFunc) {
 	return func(parser *Parser) {
-		parser.SetDefaultScheme(scheme)
+		parser.scheme = scheme
 	}
 }
 
@@ -263,7 +234,7 @@ func WithDefaultScheme(scheme string) (f OptionFunc) {
 //   - f (OptionFunc): an OptionFunc function that applies the ICANN-only list.
 func WithIgnorePrivate() (f OptionFunc) {
 	return func(parser *Parser) {
-		parser.rules = psl.ICANN
+		parser.rules = hqgourlpsl.ICANN
 	}
 }
 

@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/hueristiq/hq-lib-url-go/extractor"
+	hqgourlextractor "github.com/hueristiq/hq-lib-url-go/extractor"
 )
 
 func Test_DecodeJSEscapes(t *testing.T) {
@@ -166,7 +166,7 @@ func Test_DecodeJSEscapes(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := extractor.DecodeJSEscapes(testCase.in)
+			got := hqgourlextractor.DecodeJSEscapes(testCase.in)
 
 			assert.Equal(t, testCase.want, got)
 		})

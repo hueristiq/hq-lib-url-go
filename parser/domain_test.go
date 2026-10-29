@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/hueristiq/hq-lib-url-go/parser"
+	hqgourlparser "github.com/hueristiq/hq-lib-url-go/parser"
 )
 
 func Test_Domain_String_And_Apex(t *testing.T) {
@@ -13,37 +13,37 @@ func Test_Domain_String_And_Apex(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		domain       parser.Domain
+		domain       hqgourlparser.Domain
 		expectedFull string
 		expectedApex string
 	}{
 		{
 			"full domain",
-			parser.Domain{Subdomain: "www", SecondLevelDomain: "example", TopLevelDomain: "com"},
+			hqgourlparser.Domain{Subdomain: "www", SecondLevelDomain: "example", TopLevelDomain: "com"},
 			"www.example.com",
 			"example.com",
 		},
 		{
 			"without subdomain",
-			parser.Domain{SecondLevelDomain: "example", TopLevelDomain: "com"},
+			hqgourlparser.Domain{SecondLevelDomain: "example", TopLevelDomain: "com"},
 			"example.com",
 			"example.com",
 		},
 		{
 			"single label",
-			parser.Domain{SecondLevelDomain: "localhost"},
+			hqgourlparser.Domain{SecondLevelDomain: "localhost"},
 			"localhost",
 			"localhost",
 		},
 		{
 			"suffix only",
-			parser.Domain{TopLevelDomain: "co.uk"},
+			hqgourlparser.Domain{TopLevelDomain: "co.uk"},
 			"co.uk",
 			"co.uk",
 		},
 		{
 			"zero domain",
-			parser.Domain{},
+			hqgourlparser.Domain{},
 			"",
 			"",
 		},
