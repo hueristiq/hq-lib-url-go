@@ -1,36 +1,37 @@
 package parser_test
 
 import (
+	"fmt"
 	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/hueristiq/hq-lib-url-go/parser"
+	hqgourlparser "github.com/hueristiq/hq-lib-url-go/parser"
 )
 
 func Test_Parser_Parse(t *testing.T) {
 	t.Parallel()
 
-	p := parser.New()
+	p := hqgourlparser.New()
 
 	tests := []struct {
 		name           string
 		raw            string
-		expectedParsed *parser.URL
+		expectedParsed *hqgourlparser.URL
 		expectedErr    bool
 	}{
 		{
 			"URL",
 			"https://example.com/path",
-			&parser.URL{
+			&hqgourlparser.URL{
 				URL: &url.URL{
 					Scheme: "https",
 					Host:   "example.com",
 					Path:   "/path",
 				},
-				Domain: &parser.Domain{
+				Domain: &hqgourlparser.Domain{
 					Subdomain:         "",
 					SecondLevelDomain: "example",
 					TopLevelDomain:    "com",
@@ -41,13 +42,13 @@ func Test_Parser_Parse(t *testing.T) {
 		{
 			"URL with subdomain",
 			"https://www.example.com/path",
-			&parser.URL{
+			&hqgourlparser.URL{
 				URL: &url.URL{
 					Scheme: "https",
 					Host:   "www.example.com",
 					Path:   "/path",
 				},
-				Domain: &parser.Domain{
+				Domain: &hqgourlparser.Domain{
 					Subdomain:         "www",
 					SecondLevelDomain: "example",
 					TopLevelDomain:    "com",
@@ -58,13 +59,13 @@ func Test_Parser_Parse(t *testing.T) {
 		{
 			"URL with multi-label TLD",
 			"https://www.example.co.uk/path",
-			&parser.URL{
+			&hqgourlparser.URL{
 				URL: &url.URL{
 					Scheme: "https",
 					Host:   "www.example.co.uk",
 					Path:   "/path",
 				},
-				Domain: &parser.Domain{
+				Domain: &hqgourlparser.Domain{
 					Subdomain:         "www",
 					SecondLevelDomain: "example",
 					TopLevelDomain:    "co.uk",
@@ -77,13 +78,13 @@ func Test_Parser_Parse(t *testing.T) {
 			// scan must continue past the non-matching suffix and keep the longest match.
 			"URL with nested multi-label TLD",
 			"https://www.bo.nordland.no/",
-			&parser.URL{
+			&hqgourlparser.URL{
 				URL: &url.URL{
 					Scheme: "https",
 					Host:   "www.bo.nordland.no",
 					Path:   "/",
 				},
-				Domain: &parser.Domain{
+				Domain: &hqgourlparser.Domain{
 					Subdomain:         "",
 					SecondLevelDomain: "www",
 					TopLevelDomain:    "bo.nordland.no",
@@ -94,13 +95,13 @@ func Test_Parser_Parse(t *testing.T) {
 		{
 			"URL with unknown TLD uses the default rule",
 			"https://www.example.invalidtld/path",
-			&parser.URL{
+			&hqgourlparser.URL{
 				URL: &url.URL{
 					Scheme: "https",
 					Host:   "www.example.invalidtld",
 					Path:   "/path",
 				},
-				Domain: &parser.Domain{
+				Domain: &hqgourlparser.Domain{
 					Subdomain:         "www",
 					SecondLevelDomain: "example",
 					TopLevelDomain:    "invalidtld",
@@ -111,13 +112,13 @@ func Test_Parser_Parse(t *testing.T) {
 		{
 			"URL with unknown TLD and no subdomain",
 			"https://example.invalidtld/path",
-			&parser.URL{
+			&hqgourlparser.URL{
 				URL: &url.URL{
 					Scheme: "https",
 					Host:   "example.invalidtld",
 					Path:   "/path",
 				},
-				Domain: &parser.Domain{
+				Domain: &hqgourlparser.Domain{
 					Subdomain:         "",
 					SecondLevelDomain: "example",
 					TopLevelDomain:    "invalidtld",
@@ -128,13 +129,13 @@ func Test_Parser_Parse(t *testing.T) {
 		{
 			"URL with pseudo TLD",
 			"https://www.example.local/path",
-			&parser.URL{
+			&hqgourlparser.URL{
 				URL: &url.URL{
 					Scheme: "https",
 					Host:   "www.example.local",
 					Path:   "/path",
 				},
-				Domain: &parser.Domain{
+				Domain: &hqgourlparser.Domain{
 					Subdomain:         "www",
 					SecondLevelDomain: "example",
 					TopLevelDomain:    "local",
@@ -145,13 +146,13 @@ func Test_Parser_Parse(t *testing.T) {
 		{
 			"URL with unicode TLD",
 			"https://example.中国/path",
-			&parser.URL{
+			&hqgourlparser.URL{
 				URL: &url.URL{
 					Scheme: "https",
 					Host:   "example.中国",
 					Path:   "/path",
 				},
-				Domain: &parser.Domain{
+				Domain: &hqgourlparser.Domain{
 					Subdomain:         "",
 					SecondLevelDomain: "example",
 					TopLevelDomain:    "中国",
@@ -162,13 +163,13 @@ func Test_Parser_Parse(t *testing.T) {
 		{
 			"URL with punycode TLD is recognized",
 			"https://example.xn--p1ai/path",
-			&parser.URL{
+			&hqgourlparser.URL{
 				URL: &url.URL{
 					Scheme: "https",
 					Host:   "example.xn--p1ai",
 					Path:   "/path",
 				},
-				Domain: &parser.Domain{
+				Domain: &hqgourlparser.Domain{
 					Subdomain:         "",
 					SecondLevelDomain: "example",
 					TopLevelDomain:    "xn--p1ai",
@@ -179,13 +180,13 @@ func Test_Parser_Parse(t *testing.T) {
 		{
 			"URL with port",
 			"https://www.example.com:8080/path",
-			&parser.URL{
+			&hqgourlparser.URL{
 				URL: &url.URL{
 					Scheme: "https",
 					Host:   "www.example.com:8080",
 					Path:   "/path",
 				},
-				Domain: &parser.Domain{
+				Domain: &hqgourlparser.Domain{
 					Subdomain:         "www",
 					SecondLevelDomain: "example",
 					TopLevelDomain:    "com",
@@ -196,13 +197,13 @@ func Test_Parser_Parse(t *testing.T) {
 		{
 			"URL with single-label host",
 			"http://localhost:8080/path",
-			&parser.URL{
+			&hqgourlparser.URL{
 				URL: &url.URL{
 					Scheme: "http",
 					Host:   "localhost:8080",
 					Path:   "/path",
 				},
-				Domain: &parser.Domain{
+				Domain: &hqgourlparser.Domain{
 					Subdomain:         "",
 					SecondLevelDomain: "localhost",
 					TopLevelDomain:    "",
@@ -213,13 +214,13 @@ func Test_Parser_Parse(t *testing.T) {
 		{
 			"URL with whole-host recognized suffix",
 			"https://co.uk/path",
-			&parser.URL{
+			&hqgourlparser.URL{
 				URL: &url.URL{
 					Scheme: "https",
 					Host:   "co.uk",
 					Path:   "/path",
 				},
-				Domain: &parser.Domain{
+				Domain: &hqgourlparser.Domain{
 					Subdomain:         "",
 					SecondLevelDomain: "",
 					TopLevelDomain:    "co.uk",
@@ -233,13 +234,13 @@ func Test_Parser_Parse(t *testing.T) {
 		{
 			"URL with public suffix exception rule",
 			"https://www.ck/path",
-			&parser.URL{
+			&hqgourlparser.URL{
 				URL: &url.URL{
 					Scheme: "https",
 					Host:   "www.ck",
 					Path:   "/path",
 				},
-				Domain: &parser.Domain{
+				Domain: &hqgourlparser.Domain{
 					Subdomain:         "",
 					SecondLevelDomain: "www",
 					TopLevelDomain:    "ck",
@@ -250,13 +251,13 @@ func Test_Parser_Parse(t *testing.T) {
 		{
 			"URL with public wildcard suffix",
 			"https://test.ck/path",
-			&parser.URL{
+			&hqgourlparser.URL{
 				URL: &url.URL{
 					Scheme: "https",
 					Host:   "test.ck",
 					Path:   "/path",
 				},
-				Domain: &parser.Domain{
+				Domain: &hqgourlparser.Domain{
 					Subdomain:         "",
 					SecondLevelDomain: "",
 					TopLevelDomain:    "test.ck",
@@ -267,13 +268,13 @@ func Test_Parser_Parse(t *testing.T) {
 		{
 			"URL with public wildcard suffix and subdomain",
 			"https://b.test.ck/path",
-			&parser.URL{
+			&hqgourlparser.URL{
 				URL: &url.URL{
 					Scheme: "https",
 					Host:   "b.test.ck",
 					Path:   "/path",
 				},
-				Domain: &parser.Domain{
+				Domain: &hqgourlparser.Domain{
 					Subdomain:         "",
 					SecondLevelDomain: "b",
 					TopLevelDomain:    "test.ck",
@@ -286,13 +287,13 @@ func Test_Parser_Parse(t *testing.T) {
 		{
 			"URL with private suffix",
 			"https://blogspot.com/path",
-			&parser.URL{
+			&hqgourlparser.URL{
 				URL: &url.URL{
 					Scheme: "https",
 					Host:   "blogspot.com",
 					Path:   "/path",
 				},
-				Domain: &parser.Domain{
+				Domain: &hqgourlparser.Domain{
 					Subdomain:         "",
 					SecondLevelDomain: "",
 					TopLevelDomain:    "blogspot.com",
@@ -303,13 +304,13 @@ func Test_Parser_Parse(t *testing.T) {
 		{
 			"URL with private suffix and subdomain",
 			"https://foo.blogspot.com/path",
-			&parser.URL{
+			&hqgourlparser.URL{
 				URL: &url.URL{
 					Scheme: "https",
 					Host:   "foo.blogspot.com",
 					Path:   "/path",
 				},
-				Domain: &parser.Domain{
+				Domain: &hqgourlparser.Domain{
 					Subdomain:         "",
 					SecondLevelDomain: "foo",
 					TopLevelDomain:    "blogspot.com",
@@ -320,13 +321,13 @@ func Test_Parser_Parse(t *testing.T) {
 		{
 			"URL with multi-label private suffix",
 			"https://s3.amazonaws.com/path",
-			&parser.URL{
+			&hqgourlparser.URL{
 				URL: &url.URL{
 					Scheme: "https",
 					Host:   "s3.amazonaws.com",
 					Path:   "/path",
 				},
-				Domain: &parser.Domain{
+				Domain: &hqgourlparser.Domain{
 					Subdomain:         "",
 					SecondLevelDomain: "",
 					TopLevelDomain:    "s3.amazonaws.com",
@@ -337,13 +338,13 @@ func Test_Parser_Parse(t *testing.T) {
 		{
 			"URL with multi-label private suffix and subdomain",
 			"https://bucket.s3.amazonaws.com/path",
-			&parser.URL{
+			&hqgourlparser.URL{
 				URL: &url.URL{
 					Scheme: "https",
 					Host:   "bucket.s3.amazonaws.com",
 					Path:   "/path",
 				},
-				Domain: &parser.Domain{
+				Domain: &hqgourlparser.Domain{
 					Subdomain:         "",
 					SecondLevelDomain: "bucket",
 					TopLevelDomain:    "s3.amazonaws.com",
@@ -354,13 +355,13 @@ func Test_Parser_Parse(t *testing.T) {
 		{
 			"URL with uppercase host",
 			"https://WWW.EXAMPLE.COM/path",
-			&parser.URL{
+			&hqgourlparser.URL{
 				URL: &url.URL{
 					Scheme: "https",
 					Host:   "WWW.EXAMPLE.COM",
 					Path:   "/path",
 				},
-				Domain: &parser.Domain{
+				Domain: &hqgourlparser.Domain{
 					Subdomain:         "www",
 					SecondLevelDomain: "example",
 					TopLevelDomain:    "com",
@@ -371,13 +372,13 @@ func Test_Parser_Parse(t *testing.T) {
 		{
 			"URL with trailing root dot",
 			"https://example.com./path",
-			&parser.URL{
+			&hqgourlparser.URL{
 				URL: &url.URL{
 					Scheme: "https",
 					Host:   "example.com.",
 					Path:   "/path",
 				},
-				Domain: &parser.Domain{
+				Domain: &hqgourlparser.Domain{
 					Subdomain:         "",
 					SecondLevelDomain: "example",
 					TopLevelDomain:    "com",
@@ -388,7 +389,7 @@ func Test_Parser_Parse(t *testing.T) {
 		{
 			"URL with IPv4",
 			"http://192.168.0.1/path",
-			&parser.URL{
+			&hqgourlparser.URL{
 				URL: &url.URL{
 					Scheme: "http",
 					Host:   "192.168.0.1",
@@ -401,7 +402,7 @@ func Test_Parser_Parse(t *testing.T) {
 		{
 			"URL with IPv6",
 			"https://[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:17000/path",
-			&parser.URL{
+			&hqgourlparser.URL{
 				URL: &url.URL{
 					Scheme: "https",
 					Host:   "[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:17000",
@@ -414,26 +415,26 @@ func Test_Parser_Parse(t *testing.T) {
 		{
 			"Invalid URL 0",
 			"://example.com",
-			&parser.URL{},
+			&hqgourlparser.URL{},
 			true,
 		},
 		{
 			"Invalid URL 1",
 			"https://example.com/%invalid",
-			&parser.URL{},
+			&hqgourlparser.URL{},
 			true,
 		},
 		{
 			"URL with percent-encoded CR in path",
 			"https://example.com/w%0d%2e/",
-			&parser.URL{
+			&hqgourlparser.URL{
 				URL: &url.URL{
 					Scheme:  "https",
 					Host:    "example.com",
 					Path:    "/w\r./",
 					RawPath: "/w%0d%2e/",
 				},
-				Domain: &parser.Domain{
+				Domain: &hqgourlparser.Domain{
 					Subdomain:         "",
 					SecondLevelDomain: "example",
 					TopLevelDomain:    "com",
@@ -444,14 +445,14 @@ func Test_Parser_Parse(t *testing.T) {
 		{
 			"Scheme-less URL with query",
 			"example.com/with/path?some'param=`'+OR+ORDER+BY+1--",
-			&parser.URL{
+			&hqgourlparser.URL{
 				URL: &url.URL{
 					Scheme:   "",
 					Host:     "",
 					Path:     "example.com/with/path",
 					RawQuery: "some'param=`'+OR+ORDER+BY+1--",
 				},
-				Domain: &parser.Domain{
+				Domain: &hqgourlparser.Domain{
 					Subdomain:         "",
 					SecondLevelDomain: "",
 					TopLevelDomain:    "",
@@ -462,13 +463,13 @@ func Test_Parser_Parse(t *testing.T) {
 		{
 			"URL with relative dot segments in path",
 			"https://example.com/a/b/c/../c",
-			&parser.URL{
+			&hqgourlparser.URL{
 				URL: &url.URL{
 					Scheme: "https",
 					Host:   "example.com",
 					Path:   "/a/b/c/../c",
 				},
-				Domain: &parser.Domain{
+				Domain: &hqgourlparser.Domain{
 					Subdomain:         "",
 					SecondLevelDomain: "example",
 					TopLevelDomain:    "com",
@@ -499,24 +500,24 @@ func Test_Parser_Parse(t *testing.T) {
 func Test_Parser_WithDefaultScheme_Parse(t *testing.T) {
 	t.Parallel()
 
-	p := parser.New(parser.WithDefaultScheme("https"))
+	p := hqgourlparser.New(hqgourlparser.WithDefaultScheme("https"))
 
 	tests := []struct {
 		name              string
 		URL               string
-		expectedParsedURL *parser.URL
+		expectedParsedURL *hqgourlparser.URL
 		expectedErr       bool
 	}{
 		{
 			"URL without scheme",
 			"example.com/path",
-			&parser.URL{
+			&hqgourlparser.URL{
 				URL: &url.URL{
 					Scheme: "https",
 					Host:   "example.com",
 					Path:   "/path",
 				},
-				Domain: &parser.Domain{
+				Domain: &hqgourlparser.Domain{
 					Subdomain:         "",
 					SecondLevelDomain: "example",
 					TopLevelDomain:    "com",
@@ -527,13 +528,13 @@ func Test_Parser_WithDefaultScheme_Parse(t *testing.T) {
 		{
 			"URL with ://",
 			"://example.com/path",
-			&parser.URL{
+			&hqgourlparser.URL{
 				URL: &url.URL{
 					Scheme: "https",
 					Host:   "example.com",
 					Path:   "/path",
 				},
-				Domain: &parser.Domain{
+				Domain: &hqgourlparser.Domain{
 					Subdomain:         "",
 					SecondLevelDomain: "example",
 					TopLevelDomain:    "com",
@@ -544,13 +545,13 @@ func Test_Parser_WithDefaultScheme_Parse(t *testing.T) {
 		{
 			"network-path reference",
 			"//example.com/path",
-			&parser.URL{
+			&hqgourlparser.URL{
 				URL: &url.URL{
 					Scheme: "https",
 					Host:   "example.com",
 					Path:   "/path",
 				},
-				Domain: &parser.Domain{
+				Domain: &hqgourlparser.Domain{
 					Subdomain:         "",
 					SecondLevelDomain: "example",
 					TopLevelDomain:    "com",
@@ -561,13 +562,13 @@ func Test_Parser_WithDefaultScheme_Parse(t *testing.T) {
 		{
 			"URL with scheme",
 			"http://example.com/path",
-			&parser.URL{
+			&hqgourlparser.URL{
 				URL: &url.URL{
 					Scheme: "http",
 					Host:   "example.com",
 					Path:   "/path",
 				},
-				Domain: &parser.Domain{
+				Domain: &hqgourlparser.Domain{
 					Subdomain:         "",
 					SecondLevelDomain: "example",
 					TopLevelDomain:    "com",
@@ -580,12 +581,12 @@ func Test_Parser_WithDefaultScheme_Parse(t *testing.T) {
 			// scheme: the default scheme must not be prepended.
 			"Opaque URI with explicit scheme",
 			"mailto:user@example.com",
-			&parser.URL{
+			&hqgourlparser.URL{
 				URL: &url.URL{
 					Scheme: "mailto",
 					Opaque: "user@example.com",
 				},
-				Domain: &parser.Domain{},
+				Domain: &hqgourlparser.Domain{},
 			},
 			false,
 		},
@@ -593,12 +594,12 @@ func Test_Parser_WithDefaultScheme_Parse(t *testing.T) {
 			// A ":" in the first path segment followed by non-digits stays opaque.
 			"Opaque URI with non-numeric remainder",
 			"foo:bar",
-			&parser.URL{
+			&hqgourlparser.URL{
 				URL: &url.URL{
 					Scheme: "foo",
 					Opaque: "bar",
 				},
-				Domain: &parser.Domain{},
+				Domain: &hqgourlparser.Domain{},
 			},
 			false,
 		},
@@ -607,13 +608,13 @@ func Test_Parser_WithDefaultScheme_Parse(t *testing.T) {
 			// default scheme is prepended and the port is kept.
 			"URL without scheme with host and port",
 			"example.com:8080/api",
-			&parser.URL{
+			&hqgourlparser.URL{
 				URL: &url.URL{
 					Scheme: "https",
 					Host:   "example.com:8080",
 					Path:   "/api",
 				},
-				Domain: &parser.Domain{
+				Domain: &hqgourlparser.Domain{
 					Subdomain:         "",
 					SecondLevelDomain: "example",
 					TopLevelDomain:    "com",
@@ -624,7 +625,7 @@ func Test_Parser_WithDefaultScheme_Parse(t *testing.T) {
 		{
 			"URL without scheme with IP and port",
 			"127.0.0.1:8080/x",
-			&parser.URL{
+			&hqgourlparser.URL{
 				URL: &url.URL{
 					Scheme: "https",
 					Host:   "127.0.0.1:8080",
@@ -636,12 +637,12 @@ func Test_Parser_WithDefaultScheme_Parse(t *testing.T) {
 		{
 			"URL without scheme with single-label host and port",
 			"localhost:8080",
-			&parser.URL{
+			&hqgourlparser.URL{
 				URL: &url.URL{
 					Scheme: "https",
 					Host:   "localhost:8080",
 				},
-				Domain: &parser.Domain{
+				Domain: &hqgourlparser.Domain{
 					SecondLevelDomain: "localhost",
 				},
 			},
@@ -670,47 +671,47 @@ func Test_Parser_WithDefaultScheme_Parse(t *testing.T) {
 func Test_Parser_WithIgnorePrivate(t *testing.T) {
 	t.Parallel()
 
-	p := parser.New(parser.WithIgnorePrivate())
+	p := hqgourlparser.New(hqgourlparser.WithIgnorePrivate())
 
 	tests := []struct {
 		name           string
 		raw            string
-		expectedDomain *parser.Domain
+		expectedDomain *hqgourlparser.Domain
 	}{
 		{
 			"private suffix as the whole host",
 			"https://blogspot.com/path",
-			&parser.Domain{SecondLevelDomain: "blogspot", TopLevelDomain: "com"},
+			&hqgourlparser.Domain{SecondLevelDomain: "blogspot", TopLevelDomain: "com"},
 		},
 		{
 			"host under a private suffix",
 			"https://foo.blogspot.com/path",
-			&parser.Domain{Subdomain: "foo", SecondLevelDomain: "blogspot", TopLevelDomain: "com"},
+			&hqgourlparser.Domain{Subdomain: "foo", SecondLevelDomain: "blogspot", TopLevelDomain: "com"},
 		},
 		{
 			"multi-label private suffix as the whole host",
 			"https://s3.amazonaws.com/path",
-			&parser.Domain{Subdomain: "s3", SecondLevelDomain: "amazonaws", TopLevelDomain: "com"},
+			&hqgourlparser.Domain{Subdomain: "s3", SecondLevelDomain: "amazonaws", TopLevelDomain: "com"},
 		},
 		{
 			"host under a multi-label private suffix",
 			"https://bucket.s3.amazonaws.com/path",
-			&parser.Domain{Subdomain: "bucket.s3", SecondLevelDomain: "amazonaws", TopLevelDomain: "com"},
+			&hqgourlparser.Domain{Subdomain: "bucket.s3", SecondLevelDomain: "amazonaws", TopLevelDomain: "com"},
 		},
 		{
 			"unknown TLD still uses the default rule",
 			"https://example.invalidtld/path",
-			&parser.Domain{SecondLevelDomain: "example", TopLevelDomain: "invalidtld"},
+			&hqgourlparser.Domain{SecondLevelDomain: "example", TopLevelDomain: "invalidtld"},
 		},
 		{
 			"public multi-label suffix is unchanged",
 			"https://www.example.co.uk/path",
-			&parser.Domain{Subdomain: "www", SecondLevelDomain: "example", TopLevelDomain: "co.uk"},
+			&hqgourlparser.Domain{Subdomain: "www", SecondLevelDomain: "example", TopLevelDomain: "co.uk"},
 		},
 		{
 			"public exception rule is unchanged",
 			"https://www.ck/path",
-			&parser.Domain{SecondLevelDomain: "www", TopLevelDomain: "ck"},
+			&hqgourlparser.Domain{SecondLevelDomain: "www", TopLevelDomain: "ck"},
 		},
 	}
 
@@ -729,20 +730,20 @@ func Test_Parser_WithIgnorePrivate(t *testing.T) {
 func Test_Parser_zeroValue(t *testing.T) {
 	t.Parallel()
 
-	var p parser.Parser
+	var p hqgourlparser.Parser
 
 	parsed, err := p.Parse("https://a.b.example/path")
 	require.NoError(t, err)
 
-	assert.Equal(t, &parser.Domain{Subdomain: "a", SecondLevelDomain: "b"}, parsed.Domain)
+	assert.Equal(t, &hqgourlparser.Domain{Subdomain: "a", SecondLevelDomain: "b"}, parsed.Domain)
 }
 
 func TestParse_Lenient(t *testing.T) {
 	t.Parallel()
 
-	lenient := parser.New(
-		parser.WithDefaultScheme("http"),
-		parser.WithLenient(),
+	lenient := hqgourlparser.New(
+		hqgourlparser.WithDefaultScheme("http"),
+		hqgourlparser.WithLenient(),
 	)
 
 	t.Run("invalid escape", func(t *testing.T) {
@@ -816,7 +817,7 @@ func TestParse_Lenient(t *testing.T) {
 	t.Run("strict default still rejects", func(t *testing.T) {
 		t.Parallel()
 
-		strict := parser.New(parser.WithDefaultScheme("http"))
+		strict := hqgourlparser.New(hqgourlparser.WithDefaultScheme("http"))
 
 		parsed, err := strict.Parse("https://scanme.sh/%invalid")
 
@@ -828,6 +829,61 @@ func TestParse_Lenient(t *testing.T) {
 func Test_Parser_New_IgnoresNilOptions(t *testing.T) {
 	t.Parallel()
 
-	p := parser.New(nil)
+	p := hqgourlparser.New(nil)
 	require.NotNil(t, p)
+}
+
+// ExampleParse demonstrates parsing a URL and reading its decomposed domain.
+func ExampleParse() {
+	p := hqgourlparser.New(hqgourlparser.WithDefaultScheme("https"))
+
+	parsed, err := p.Parse("scanme.sh/path")
+	if err != nil {
+		fmt.Println(err)
+
+		return
+	}
+
+	fmt.Println(parsed.Scheme)
+	fmt.Println(parsed.Domain.Subdomain)
+	fmt.Println(parsed.Domain.SecondLevelDomain)
+	fmt.Println(parsed.Domain.TopLevelDomain)
+	// Output:
+	// https
+	//
+	// scanme
+	// sh
+}
+
+// FuzzParse exercises Parse over arbitrary inputs: no input may panic, and a
+// rejected URL must return an error rather than a partial result.
+func FuzzParse(f *testing.F) {
+	f.Add("https://example.com/path")
+	f.Add("example.com")
+	f.Add("")
+	f.Add("http://[::1]:8080/x")
+	f.Add("https://user:pass@www.example.co.uk:8443/a?b=c#d")
+	f.Add("%zz")
+
+	f.Fuzz(func(t *testing.T, raw string) {
+		p := hqgourlparser.New()
+
+		parsed, err := p.Parse(raw)
+		if err != nil {
+			return
+		}
+
+		if parsed == nil || parsed.URL == nil {
+			t.Fatal("Expected a non-nil parsed URL on success")
+		}
+
+		// The domain must be consistent with the host: IP literals carry nil,
+		// empty hosts carry a zero Domain.
+		emptyHost := parsed.Hostname() == "" && parsed.Domain != nil &&
+			(parsed.Domain.Subdomain != "" || parsed.Domain.SecondLevelDomain != "" || parsed.Domain.TopLevelDomain != "")
+
+		if emptyHost {
+			t.Fatal("Expected an empty-host URL to carry no domain components")
+		}
+	})
 }

@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/hueristiq/hq-lib-url-go/extractor"
+	hqgourlextractor "github.com/hueristiq/hq-lib-url-go/extractor"
 )
 
 func Test_SchemePatterns_caseInsensitive(t *testing.T) {
@@ -16,11 +16,11 @@ func Test_SchemePatterns_caseInsensitive(t *testing.T) {
 		pattern string
 		text    string
 	}{
-		{"scheme pattern", extractor.SchemePattern, "MAILTO:user@example.com"},
-		{"known official", extractor.KnownOfficialSchemePattern, "HTTPS://example.com"},
-		{"known unofficial", extractor.KnownUnofficialSchemePattern, "SLACK://example.com"},
-		{"known no authority", extractor.KnownNoAuthoritySchemePattern, "MAILTO:user@example.com"},
-		{"known scheme", extractor.KnownSchemePattern, "MAILTO:user@example.com"},
+		{"scheme pattern", hqgourlextractor.SchemePattern, "MAILTO:user@example.com"},
+		{"known official", hqgourlextractor.KnownOfficialSchemePattern, "HTTPS://example.com"},
+		{"known unofficial", hqgourlextractor.KnownUnofficialSchemePattern, "SLACK://example.com"},
+		{"known no authority", hqgourlextractor.KnownNoAuthoritySchemePattern, "MAILTO:user@example.com"},
+		{"known scheme", hqgourlextractor.KnownSchemePattern, "MAILTO:user@example.com"},
 	}
 
 	for _, tt := range tests {

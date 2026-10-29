@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/hueristiq/hq-lib-url-go/extractor"
+	hqgourlextractor "github.com/hueristiq/hq-lib-url-go/extractor"
 )
 
 // regexSink, errRegexSink, and matchesSink keep benchmark results alive so the compiler
@@ -19,7 +19,7 @@ var (
 // default (scheme-less-tolerant) extraction regex, which splices the full known-TLD
 // alternation into the pattern.
 func Benchmark_Extractor_CompileRegex(b *testing.B) {
-	e := extractor.New()
+	e := hqgourlextractor.New()
 
 	b.ReportAllocs()
 
@@ -39,7 +39,7 @@ func Benchmark_Extractor_CompileRegex(b *testing.B) {
 // Benchmark_Extractor_CompileRegexWithScheme measures the cost of composing and
 // compiling the strictest (scheme-required) extraction regex.
 func Benchmark_Extractor_CompileRegexWithScheme(b *testing.B) {
-	e := extractor.New(extractor.WithScheme())
+	e := hqgourlextractor.New(hqgourlextractor.WithScheme())
 
 	b.ReportAllocs()
 
@@ -59,7 +59,7 @@ func Benchmark_Extractor_CompileRegexWithScheme(b *testing.B) {
 // Benchmark_Extractor_FindAllString measures the match hot path: scanning a realistic
 // mixed corpus with the host-requiring regex.
 func Benchmark_Extractor_FindAllString(b *testing.B) {
-	regex, err := extractor.New(extractor.WithHost()).CompileRegex()
+	regex, err := hqgourlextractor.New(hqgourlextractor.WithHost()).CompileRegex()
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -70,6 +70,22 @@ func Benchmark_Extractor_FindAllString(b *testing.B) {
 
 	for b.Loop() {
 		matches = regex.FindAllString(corpus, -1)
+	}
+
+	matchesSink = matches
+}
+
+// BenchmarkExtract measures the cached one-call extraction path: the pattern
+// is compiled once and every call scans the corpus.
+func BenchmarkExtract(b *testing.B) {
+	e := hqgourlextractor.New()
+
+	b.ReportAllocs()
+
+	var matches []string
+
+	for range b.N {
+		matches, _ = e.Extract(corpus)
 	}
 
 	matchesSink = matches

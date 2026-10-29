@@ -3,13 +3,13 @@ package parser_test
 import (
 	"testing"
 
-	"github.com/hueristiq/hq-lib-url-go/parser"
+	hqgourlparser "github.com/hueristiq/hq-lib-url-go/parser"
 )
 
 // parseURLSink and errParseSink keep benchmark results alive so the compiler cannot
 // optimize the measured calls away.
 var (
-	parseURLSink *parser.URL
+	parseURLSink *hqgourlparser.URL
 	errParseSink error
 )
 
@@ -17,12 +17,12 @@ var (
 // parsing, and TLD decomposition — on a URL exercising every component: user info, a
 // subdomain, a multi-label TLD, a port, a query, and a fragment.
 func Benchmark_Parser_Parse(b *testing.B) {
-	p := parser.New()
+	p := hqgourlparser.New()
 
 	b.ReportAllocs()
 
 	var (
-		parsed *parser.URL
+		parsed *hqgourlparser.URL
 		err    error
 	)
 
@@ -37,12 +37,12 @@ func Benchmark_Parser_Parse(b *testing.B) {
 // Benchmark_Parser_ParseSingleLabelHost measures the parse path for a single-label host
 // ("localhost"), which skips TLD lookup entirely.
 func Benchmark_Parser_ParseSingleLabelHost(b *testing.B) {
-	p := parser.New()
+	p := hqgourlparser.New()
 
 	b.ReportAllocs()
 
 	var (
-		parsed *parser.URL
+		parsed *hqgourlparser.URL
 		err    error
 	)
 

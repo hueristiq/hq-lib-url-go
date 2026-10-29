@@ -3,14 +3,18 @@ package extractor
 import (
 	"fmt"
 	"regexp"
+	"sync"
 
-	"github.com/hueristiq/hq-lib-url-go/schemes"
+	hqgourlschemes "github.com/hueristiq/hq-lib-url-go/schemes"
 )
 
 // Extractor configures the URL extraction process.
 // It provides options for controlling whether URL schemes and hosts are mandatory, and allows custom
 // regular expression patterns to be specified for these components. This allows fine-grained control over
 // the types of URLs that are extracted from text.
+//
+// Construct through [New]; an Extractor is immutable after construction and
+// must not be copied after first use.
 //
 // Fields:
 //   - withScheme (bool): whether a URL scheme (e.g., "http") is required in extracted URLs.
@@ -19,6 +23,9 @@ import (
 //   - withHostPattern (string): a custom regular expression pattern to match URL hosts.
 //   - withoutEmail (bool): whether bare email addresses are excluded from extraction.
 //   - withoutUserInfo (bool): whether user info in the authority is excluded from extraction.
+//   - regexpOnce (sync.Once): guards the lazy compilation of the extraction regexp.
+//   - regexp (*regexp.Regexp): the compiled extraction pattern, cached for [Extractor.Extract].
+//   - regexpErr (error): the compilation failure cached alongside regexp.
 type Extractor struct {
 	withScheme        bool
 	withSchemePattern string
@@ -26,6 +33,10 @@ type Extractor struct {
 	withHostPattern   string
 	withoutEmail      bool
 	withoutUserInfo   bool
+
+	regexpOnce sync.Once
+	regexp     *regexp.Regexp
+	regexpErr  error
 }
 
 // CompileRegex constructs and compiles a regular expression pattern for URL extraction.
@@ -39,18 +50,6 @@ type Extractor struct {
 //     longest match at each position, that can be used to extract URLs from text.
 //   - err (error): a wrapped error when the composed pattern fails to compile, e.g. when a
 //     custom scheme or host pattern is invalid.
-//
-// Example:
-//
-//	// Create an extractor that requires URL schemes.
-//	extractor := New(WithScheme())
-//
-//	regex, err := extractor.CompileRegex()
-//	if err != nil {
-//		log.Fatal(err)
-//	}
-//
-//	urls := regex.FindAllString(text, -1) // Extracts URLs from the provided text.
 func (e *Extractor) CompileRegex() (regex *regexp.Regexp, err error) {
 	knownTLDPattern := knownTLDPatternOnce()
 
@@ -93,7 +92,7 @@ func (e *Extractor) CompileRegex() (regex *regexp.Regexp, err error) {
 	// replaces both and is treated as an authority scheme. Group it so a
 	// top-level alternation cannot change the precedence of the final pattern.
 	authoritySchemePattern := `[a-zA-Z][a-zA-Z0-9.\-+]*://`
-	noAuthoritySchemePattern := `(?:(?i)` + anyOf(schemes.NoAuthority...) + `:)`
+	noAuthoritySchemePattern := `(?:(?i)` + anyOf(hqgourlschemes.NoAuthority...) + `:)`
 
 	if e.withScheme && e.withSchemePattern != "" {
 		authoritySchemePattern = `(?:` + e.withSchemePattern + `)`
@@ -168,54 +167,30 @@ func (e *Extractor) CompileRegex() (regex *regexp.Regexp, err error) {
 	return regex, nil
 }
 
-// SetScheme sets the Extractor to require URL schemes during extraction.
-// It marks the withScheme flag as true.
-func (e *Extractor) SetScheme() {
-	e.withScheme = true
-}
-
-// SetSchemePattern sets a custom regular expression pattern for matching URL schemes.
-// It also marks the Extractor as requiring a scheme.
+// Extract finds every URL in text using the configured extraction pattern,
+// returning the matches in the order they appear. The pattern is compiled on
+// the first call and cached, so repeated calls share one compiled regex.
 //
 // Parameters:
-//   - pattern (string): a regex pattern to match URL schemes.
-func (e *Extractor) SetSchemePattern(pattern string) {
-	e.SetScheme()
-
-	e.withSchemePattern = pattern
-}
-
-// SetHost sets the Extractor to require URL hosts during extraction.
-// It marks the withHost flag as true.
-func (e *Extractor) SetHost() {
-	e.withHost = true
-}
-
-// SetHostPattern sets a custom regular expression pattern for matching URL hosts.
-// It also marks the Extractor as requiring a host.
+//   - text (string): the text to search.
 //
-// Parameters:
-//   - pattern (string): a regex pattern to match URL hosts.
-func (e *Extractor) SetHostPattern(pattern string) {
-	e.SetHost()
+// Returns:
+//   - matches ([]string): the URLs found, in order of appearance; empty when
+//     none match.
+//   - err (error): a wrapped error when the composed pattern fails to compile,
+//     e.g. when a custom scheme or host pattern is invalid.
+func (e *Extractor) Extract(text string) (matches []string, err error) {
+	e.regexpOnce.Do(func() {
+		e.regexp, e.regexpErr = e.CompileRegex()
+	})
 
-	e.withHostPattern = pattern
-}
+	if e.regexpErr != nil {
+		return nil, e.regexpErr
+	}
 
-// SetWithoutEmail marks the Extractor to exclude the bare email address
-// pattern from extraction. Email addresses matched through the user info +
-// host URL form are unaffected; combine with SetWithoutUserInfo to exclude
-// both.
-func (e *Extractor) SetWithoutEmail() {
-	e.withoutEmail = true
-}
+	matches = e.regexp.FindAllString(text, -1)
 
-// SetWithoutUserInfo marks the Extractor to exclude user info from the
-// authority component of extracted URLs. URLs carrying user info degrade to
-// their host (and path); bare email addresses are unaffected, as they match
-// through the email pattern.
-func (e *Extractor) SetWithoutUserInfo() {
-	e.withoutUserInfo = true
+	return matches, nil
 }
 
 // OptionFunc defines a functional option for configuring an Extractor instance.
@@ -227,28 +202,6 @@ func (e *Extractor) SetWithoutUserInfo() {
 // Parameters:
 //   - extractor (*Extractor): the Extractor instance to configure.
 type OptionFunc func(extractor *Extractor)
-
-// Interface defines the behavior that an Extractor must implement.
-//
-// Methods:
-//   - CompileRegex() (regex *regexp.Regexp, err error): compiles the configured
-//     extractor into a [regexp.Regexp].
-type Interface interface {
-	// CompileRegex constructs and compiles the regular expression pattern for URL
-	// extraction.
-	//
-	// Parameters:
-	//
-	//	none.
-	//
-	// Returns:
-	//   - regex (*regexp.Regexp): the compiled pattern, tuned for longest matches.
-	//   - err (error): non-nil when the composed pattern is invalid.
-	CompileRegex() (regex *regexp.Regexp, err error)
-}
-
-// Compile-time guard ensuring [Extractor] satisfies [Interface].
-var _ Interface = (*Extractor)(nil)
 
 // New creates a new Extractor instance with optional configuration.
 // The options can be used to customize the behavior of the Extractor, such as requiring URL schemes
@@ -277,7 +230,7 @@ func New(ofs ...OptionFunc) (extractor *Extractor) {
 //   - f (OptionFunc): a function that sets the withScheme flag to true.
 func WithScheme() (f OptionFunc) {
 	return func(extractor *Extractor) {
-		extractor.SetScheme()
+		extractor.withScheme = true
 	}
 }
 
@@ -290,7 +243,8 @@ func WithScheme() (f OptionFunc) {
 //   - f (OptionFunc): a function that sets the custom scheme pattern and enables the withScheme flag.
 func WithSchemePattern(pattern string) (f OptionFunc) {
 	return func(extractor *Extractor) {
-		extractor.SetSchemePattern(pattern)
+		extractor.withScheme = true
+		extractor.withSchemePattern = pattern
 	}
 }
 
@@ -300,7 +254,7 @@ func WithSchemePattern(pattern string) (f OptionFunc) {
 //   - f (OptionFunc): a function that sets the withHost flag to true.
 func WithHost() (f OptionFunc) {
 	return func(extractor *Extractor) {
-		extractor.SetHost()
+		extractor.withHost = true
 	}
 }
 
@@ -313,7 +267,8 @@ func WithHost() (f OptionFunc) {
 //   - f (OptionFunc): a function that sets the custom host pattern and enables the withHost flag.
 func WithHostPattern(pattern string) (f OptionFunc) {
 	return func(extractor *Extractor) {
-		extractor.SetHostPattern(pattern)
+		extractor.withHost = true
+		extractor.withHostPattern = pattern
 	}
 }
 
@@ -326,7 +281,7 @@ func WithHostPattern(pattern string) (f OptionFunc) {
 //   - f (OptionFunc): a function that marks the withoutEmail flag as true.
 func WithoutEmail() (f OptionFunc) {
 	return func(extractor *Extractor) {
-		extractor.SetWithoutEmail()
+		extractor.withoutEmail = true
 	}
 }
 
@@ -339,6 +294,6 @@ func WithoutEmail() (f OptionFunc) {
 //   - f (OptionFunc): a function that marks the withoutUserInfo flag as true.
 func WithoutUserInfo() (f OptionFunc) {
 	return func(extractor *Extractor) {
-		extractor.SetWithoutUserInfo()
+		extractor.withoutUserInfo = true
 	}
 }

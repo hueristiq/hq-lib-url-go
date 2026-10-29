@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/hueristiq/hq-lib-url-go/parser"
+	hqgourlparser "github.com/hueristiq/hq-lib-url-go/parser"
 )
 
 func Test_InferScheme(t *testing.T) {
@@ -37,7 +37,7 @@ func Test_InferScheme(t *testing.T) {
 		t.Run(tt.host, func(t *testing.T) {
 			t.Parallel()
 
-			assert.Equal(t, tt.expectedScheme, parser.InferScheme(tt.host))
+			assert.Equal(t, tt.expectedScheme, hqgourlparser.InferScheme(tt.host))
 		})
 	}
 }
