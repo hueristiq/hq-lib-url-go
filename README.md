@@ -27,7 +27,7 @@
 go get github.com/hueristiq/hq-lib-url-go@latest
 ```
 
-Requires Go 1.26.3 or later.
+Requires Go 1.23 or later.
 
 ## Usage
 

@@ -26,7 +26,7 @@ func Benchmark_Parser_Parse(b *testing.B) {
 		err    error
 	)
 
-	for b.Loop() {
+	for range b.N {
 		parsed, err = p.Parse("https://user:pass@www.example.co.uk:8443/path/to/resource?a=1&b=2#section")
 	}
 
@@ -46,7 +46,7 @@ func Benchmark_Parser_ParseSingleLabelHost(b *testing.B) {
 		err    error
 	)
 
-	for b.Loop() {
+	for range b.N {
 		parsed, err = p.Parse("http://localhost:8080/health")
 	}
 

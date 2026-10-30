@@ -134,6 +134,7 @@ var Official = []string{
 	"gsos",
 	"gtalk",
 	"h323",
+	"haie",
 	"ham",
 	"hcap",
 	"hcp",

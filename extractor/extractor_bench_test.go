@@ -28,7 +28,7 @@ func Benchmark_Extractor_CompileRegex(b *testing.B) {
 		err   error
 	)
 
-	for b.Loop() {
+	for range b.N {
 		regex, err = e.CompileRegex()
 	}
 
@@ -48,7 +48,7 @@ func Benchmark_Extractor_CompileRegexWithScheme(b *testing.B) {
 		err   error
 	)
 
-	for b.Loop() {
+	for range b.N {
 		regex, err = e.CompileRegex()
 	}
 
@@ -68,7 +68,7 @@ func Benchmark_Extractor_FindAllString(b *testing.B) {
 
 	var matches []string
 
-	for b.Loop() {
+	for range b.N {
 		matches = regex.FindAllString(corpus, -1)
 	}
 
