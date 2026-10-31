@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"sync"
 
-	hqgourlscheme "github.com/hueristiq/hq-lib-url-go/internal/scheme"
+	hqgourlscheme "github.com/hueristiq/hq-lib-url-go/scheme"
 )
 
 // Extractor configures the URL extraction process.

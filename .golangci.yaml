@@ -121,11 +121,11 @@ linters:
                   alias: hqgourlparser
                 - pkg: github.com/hueristiq/hq-lib-url-go/internal/psl
                   alias: hqgourlpsl
-                - pkg: github.com/hueristiq/hq-lib-url-go/internal/scheme
+                - pkg: github.com/hueristiq/hq-lib-url-go/scheme
                   alias: hqgourlscheme
-                - pkg: github.com/hueristiq/hq-lib-url-go/internal/tld
+                - pkg: github.com/hueristiq/hq-lib-url-go/tld
                   alias: hqgourltld
-                - pkg: github.com/hueristiq/hq-lib-url-go/internal/unicode
+                - pkg: github.com/hueristiq/hq-lib-url-go/unicode
                   alias: hqgourlunicode
         gocritic:
             enabled-tags:

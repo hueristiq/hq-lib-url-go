@@ -87,8 +87,10 @@
 //     weppos treats its argument as a domain and also implements
 //     net/http/cookiejar.PublicSuffixList, which this package does not.
 //
-// The runtime implementation relies on the Go standard library only; the
-// internal/psl data generator uses golang.org/x/net/idna to produce A-labels.
+// The runtime implementation relies on the Go standard library only. The
+// internal/psl data generator is a separate nested module (cmd/pslgen) that
+// uses golang.org/x/net/idna to produce A-labels, so it does not add a runtime
+// dependency to the library.
 //
 // # Configuration
 //

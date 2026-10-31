@@ -2,7 +2,7 @@
 //
 // It derives the regular-expression character classes for RFC 3987 ucschar from the
 // Unicode Character Database and emits the constants used by the unicodes package. Run
-// it from the module root through go generate.
+// go generate from the module root.
 package main
 
 import (

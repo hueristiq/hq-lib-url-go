@@ -1,7 +1,7 @@
 // Command schemesgen regenerates the official IANA URL scheme list.
 //
 // It fetches the active entries from the IANA registry and emits the sorted list used
-// by the schemes package. Run it from the module root through go generate.
+// by the schemes package. Run go generate from the module root.
 package main
 
 import (

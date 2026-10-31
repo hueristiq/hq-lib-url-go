@@ -2,7 +2,7 @@
 //
 // It merges the curated TLD text file in this directory, the IANA TLD list, and the
 // ICANN section of the Public Suffix List, then emits the sorted list used by the tlds
-// package. Run it from the module root through go generate.
+// package. Run go generate from the module root.
 package main
 
 import (
@@ -42,8 +42,8 @@ var Official = []string{
 `))
 
 const (
-	// tldsTextPath is the curated TLD list, resolved from the module root.
-	tldsTextPath = "./cmd/tldsgen/TLDs.txt"
+	// tldsTextPath is the curated TLD list, resolved from this command's directory.
+	tldsTextPath = "TLDs.txt"
 
 	// ianaTLDURL is the canonical location of the IANA TLD list.
 	ianaTLDURL = "https://data.iana.org/TLD/tlds-alpha-by-domain.txt"

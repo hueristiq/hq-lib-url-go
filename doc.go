@@ -21,11 +21,15 @@
 //   - [extractor]: compiles configurable regular expressions that extract URLs — with
 //     or without schemes and hosts — and email addresses from text.
 //
-// The PSL lookup and the generated scheme, top-level-domain, and Unicode tables
-// live under internal/ and are regenerated with go generate; see generate.go for
-// the directives. The PSL generator is a separate nested module so the library
-// module itself has no runtime dependencies beyond the standard library.
+// The PSL lookup lives in internal/psl, and the generated scheme,
+// top-level-domain, and Unicode tables live in [scheme], [tld], and [unicode].
+// They are regenerated with go generate; see generate.go for the directives. The
+// PSL generator is a separate nested module so the library module itself has no
+// runtime dependencies beyond the standard library.
 //
 // [parser]: github.com/hueristiq/hq-lib-url-go/parser
 // [extractor]: github.com/hueristiq/hq-lib-url-go/extractor
+// [scheme]: github.com/hueristiq/hq-lib-url-go/scheme
+// [tld]: github.com/hueristiq/hq-lib-url-go/tld
+// [unicode]: github.com/hueristiq/hq-lib-url-go/unicode
 package url

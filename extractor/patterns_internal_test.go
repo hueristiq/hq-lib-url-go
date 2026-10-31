@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	hqgourltld "github.com/hueristiq/hq-lib-url-go/internal/tld"
+	hqgourltld "github.com/hueristiq/hq-lib-url-go/tld"
 )
 
 func Test_hasASCIIWordEnding(t *testing.T) {

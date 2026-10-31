@@ -1,4 +1,4 @@
-// Command pslgen regenerates internal/psl/rules.go from the Public Suffix List.
+// Command pslgen regenerates internal/psl/rules_gen.go from the Public Suffix List.
 //
 // It fetches the list from publicsuffix.org, converts internationalized rules to
 // A-labels, and emits the embedded rule table used by the internal/psl package.

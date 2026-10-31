@@ -6,9 +6,9 @@ import (
 	"strings"
 	"sync"
 
-	hqgourlscheme "github.com/hueristiq/hq-lib-url-go/internal/scheme"
-	hqgourltld "github.com/hueristiq/hq-lib-url-go/internal/tld"
-	hqgourlunicode "github.com/hueristiq/hq-lib-url-go/internal/unicode"
+	hqgourlscheme "github.com/hueristiq/hq-lib-url-go/scheme"
+	hqgourltld "github.com/hueristiq/hq-lib-url-go/tld"
+	hqgourlunicode "github.com/hueristiq/hq-lib-url-go/unicode"
 )
 
 const (
