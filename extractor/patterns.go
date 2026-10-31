@@ -6,9 +6,9 @@ import (
 	"strings"
 	"sync"
 
-	hqgourlschemes "github.com/hueristiq/hq-lib-url-go/internal/scheme"
-	hqgourltlds "github.com/hueristiq/hq-lib-url-go/internal/tld"
-	hqgourlunicodes "github.com/hueristiq/hq-lib-url-go/internal/unicode"
+	hqgourlscheme "github.com/hueristiq/hq-lib-url-go/internal/scheme"
+	hqgourltld "github.com/hueristiq/hq-lib-url-go/internal/tld"
+	hqgourlunicode "github.com/hueristiq/hq-lib-url-go/internal/unicode"
 )
 
 const (
@@ -21,11 +21,11 @@ const (
 	// iUnreservedCharacterSet is the set of unreserved characters allowed in URL
 	// components, including letters, digits, hyphens, dots, underscores, tildes, and
 	// additional allowed Unicode characters.
-	iUnreservedCharacterSet = alphaCharacterSet + digitCharacterSet + `\-\._~` + hqgourlunicodes.AllowedUcsChar
+	iUnreservedCharacterSet = alphaCharacterSet + digitCharacterSet + `\-\._~` + hqgourlunicode.AllowedUcsChar
 
 	// iEndUnreservedCharacterSet is similar to iUnreservedCharacterSet but excludes the
 	// dot, so a URL component does not end with punctuation.
-	iEndUnreservedCharacterSet = alphaCharacterSet + digitCharacterSet + `\-_~` + hqgourlunicodes.AllowedUcsCharMinusPunc
+	iEndUnreservedCharacterSet = alphaCharacterSet + digitCharacterSet + `\-_~` + hqgourlunicode.AllowedUcsCharMinusPunc
 
 	// subDelimsCharacterSet defines the set of sub-delimiter characters allowed in URL
 	// components.
@@ -101,7 +101,7 @@ var (
 	// pattern. They are mutable variables only so they can be spliced into larger
 	// pattern strings; callers must not modify them.
 
-	// SchemePattern defines a general pattern for matching URL hqgourlschemes.
+	// SchemePattern defines a general pattern for matching URL hqgourlscheme.
 	// It matches any URL scheme that starts with an alphabetical character (a-z, A-Z), followed by
 	// any combination of letters, digits, dots (.), hyphens (-), or plus signs (+), and ends with "://".
 	// Additionally, it matches schemes from a predefined list that do not require an authority (host),
@@ -109,24 +109,24 @@ var (
 	//
 	// This pattern covers a broad range of schemes, making it versatile for extracting different types
 	// of URLs, whether they require an authority component or not.
-	SchemePattern = `(?:[a-zA-Z][a-zA-Z0-9.\-+]*://|(?:(?i)` + anyOf(hqgourlschemes.NoAuthority...) + `:))`
+	SchemePattern = `(?:[a-zA-Z][a-zA-Z0-9.\-+]*://|(?:(?i)` + anyOf(hqgourlscheme.NoAuthority...) + `:))`
 
 	// KnownOfficialSchemePattern defines a pattern for matching officially recognized
-	// URL hqgourlschemes. These include well-known schemes such as "http", "https", "ftp", etc., as registered
+	// URL hqgourlscheme. These include well-known schemes such as "http", "https", "ftp", etc., as registered
 	// with IANA. The pattern ensures that the scheme is followed by "://".
 	//
 	// This pattern ensures that only officially recognized schemes are matched. Matching is
 	// case-insensitive, as required by RFC 3986.
-	KnownOfficialSchemePattern = `(?:(?i)` + anyOf(hqgourlschemes.Official...) + `://)`
+	KnownOfficialSchemePattern = `(?:(?i)` + anyOf(hqgourlscheme.Official...) + `://)`
 
 	// KnownUnofficialSchemePattern defines a pattern for matching unofficial or less commonly
-	// used URL hqgourlschemes. These schemes may not be registered with IANA but are still valid in specific contexts,
+	// used URL hqgourlscheme. These schemes may not be registered with IANA but are still valid in specific contexts,
 	// such as application-specific schemes (e.g., "slack://", "zoommtg://").
 	// The pattern ensures that the scheme is followed by "://".
 	//
-	// This pattern is useful for applications that work with unofficial or niche hqgourlschemes.
+	// This pattern is useful for applications that work with unofficial or niche hqgourlscheme.
 	// Matching is case-insensitive, as required by RFC 3986.
-	KnownUnofficialSchemePattern = `(?:(?i)` + anyOf(hqgourlschemes.Unofficial...) + `://)`
+	KnownUnofficialSchemePattern = `(?:(?i)` + anyOf(hqgourlscheme.Unofficial...) + `://)`
 
 	// KnownNoAuthoritySchemePattern defines a pattern for matching URL schemes that
 	// do not require an authority component (host). These schemes are followed by a colon (":") rather than "://".
@@ -135,7 +135,7 @@ var (
 	// This pattern is used for schemes where a host is not applicable, making it suitable for schemes
 	// that involve direct communication (e.g., email or telephone). Matching is case-insensitive, as
 	// required by RFC 3986.
-	KnownNoAuthoritySchemePattern = `(?:(?i)` + anyOf(hqgourlschemes.NoAuthority...) + `:)`
+	KnownNoAuthoritySchemePattern = `(?:(?i)` + anyOf(hqgourlscheme.NoAuthority...) + `:)`
 
 	// KnownSchemePattern combines the patterns for officially recognized, unofficial,
 	// and no-authority-required schemes into a single comprehensive pattern.
@@ -143,7 +143,7 @@ var (
 	//
 	// This pattern is suitable for extracting any known scheme, regardless of its official status
 	// or whether it requires an authority component.
-	KnownSchemePattern = `(?:(?i)(?:` + anyOf(hqgourlschemes.Official...) + `|` + anyOf(hqgourlschemes.Unofficial...) + `)://|` + anyOf(hqgourlschemes.NoAuthority...) + `:)`
+	KnownSchemePattern = `(?:(?i)(?:` + anyOf(hqgourlscheme.Official...) + `|` + anyOf(hqgourlscheme.Unofficial...) + `)://|` + anyOf(hqgourlscheme.NoAuthority...) + `:)`
 
 	// IPv4Pattern defines a pattern for matching valid IPv4 addresses.
 	// It matches four groups of 1 to 3 digits (0-255) separated by periods (e.g., "192.168.0.1").
@@ -195,13 +195,13 @@ var (
 	PortOptionalPattern = PortPattern + `?`
 )
 
-// boundedTLDs and unboundedTLDs partition hqgourltlds.Official and hqgourltlds.Pseudo once at
+// boundedTLDs and unboundedTLDs partition hqgourltld.Official and hqgourltld.Pseudo once at
 // startup by whether a TLD ends in an ASCII word character: boundedTLDs are safe to
 // follow with a "\b" word boundary in the compiled regex, unboundedTLDs are not
 // (Go's "\b" only recognizes ASCII word characters, so a trailing boundary after a
 // non-ASCII TLD cannot be relied on). The split is computed entry by entry, so it
 // never depends on the generated list's sort order.
-var boundedTLDs, unboundedTLDs = splitTLDs(slices.Concat(hqgourltlds.Official, hqgourltlds.Pseudo))
+var boundedTLDs, unboundedTLDs = splitTLDs(slices.Concat(hqgourltld.Official, hqgourltld.Pseudo))
 
 // knownTLDPatternOnce memoizes the known-TLD alternation, which splices the bounded and
 // unbounded TLD lists into a large pattern string. Composing it is done once per process

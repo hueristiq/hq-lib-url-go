@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"sync"
 
-	hqgourlschemes "github.com/hueristiq/hq-lib-url-go/internal/scheme"
+	hqgourlscheme "github.com/hueristiq/hq-lib-url-go/internal/scheme"
 )
 
 // Extractor configures the URL extraction process.
@@ -92,7 +92,7 @@ func (e *Extractor) CompileRegex() (regex *regexp.Regexp, err error) {
 	// replaces both and is treated as an authority scheme. Group it so a
 	// top-level alternation cannot change the precedence of the final pattern.
 	authoritySchemePattern := `[a-zA-Z][a-zA-Z0-9.\-+]*://`
-	noAuthoritySchemePattern := `(?:(?i)` + anyOf(hqgourlschemes.NoAuthority...) + `:)`
+	noAuthoritySchemePattern := `(?:(?i)` + anyOf(hqgourlscheme.NoAuthority...) + `:)`
 
 	if e.withScheme && e.withSchemePattern != "" {
 		authoritySchemePattern = `(?:` + e.withSchemePattern + `)`

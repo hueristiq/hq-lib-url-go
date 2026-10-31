@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	hqgourltlds "github.com/hueristiq/hq-lib-url-go/internal/tld"
+	hqgourltld "github.com/hueristiq/hq-lib-url-go/internal/tld"
 )
 
 func Test_hasASCIIWordEnding(t *testing.T) {
@@ -46,9 +46,9 @@ func Test_splitTLDs(t *testing.T) {
 func Test_boundedAndUnboundedTLDs_coverOfficialAndPseudo(t *testing.T) {
 	t.Parallel()
 
-	assert.Equal(t, len(hqgourltlds.Official)+len(hqgourltlds.Pseudo), len(boundedTLDs)+len(unboundedTLDs))
+	assert.Equal(t, len(hqgourltld.Official)+len(hqgourltld.Pseudo), len(boundedTLDs)+len(unboundedTLDs))
 
-	for _, tld := range hqgourltlds.Pseudo {
+	for _, tld := range hqgourltld.Pseudo {
 		assert.True(t, slices.Contains(boundedTLDs, tld) || slices.Contains(unboundedTLDs, tld), "%q must be classified", tld)
 	}
 

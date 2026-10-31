@@ -6,9 +6,11 @@
 //
 // # Entry points
 //
-// Use [parser.New] and [parser.Parser.Parse] to turn a raw URL string into a
-// structured value, or [extractor.New] and [extractor.Extractor.CompileRegex]
-// to build the regular expression that finds URLs in text.
+// [Parse] and [Extract] cover the common cases with the default parser and
+// extractor. Use [parser.New] and [parser.Parser.Parse] for structured
+// decomposition with custom options, or [extractor.New] and
+// [extractor.Extractor.CompileRegex] to build the regular expression that
+// finds URLs in text.
 //
 // # Packages
 //

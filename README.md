@@ -27,7 +27,7 @@
 go get github.com/hueristiq/hq-lib-url-go@latest
 ```
 
-Requires Go 1.23 or later.
+Requires Go 1.26 or later.
 
 ## Usage
 
@@ -35,9 +35,21 @@ The examples import the packages under the `hqgourl`-prefixed aliases:
 
 ```go
 import (
+	hqgourl "github.com/hueristiq/hq-lib-url-go"
 	hqgourlextractor "github.com/hueristiq/hq-lib-url-go/extractor"
 	hqgourlparser "github.com/hueristiq/hq-lib-url-go/parser"
 )
+```
+
+### Quick Start
+
+The root package covers the common cases with the default parser and
+extractor:
+
+```go
+parsed, err := hqgourl.Parse("https://example.com/path?q=1")
+
+matches, err := hqgourl.Extract("see https://example.com/a and https://example.org/b")
 ```
 
 ### Extraction
