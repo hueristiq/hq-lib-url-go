@@ -1,4 +1,5 @@
-package tlds
+//nolint:testpackage // tests exercise unexported behavior.
+package tld
 
 import (
 	"regexp"

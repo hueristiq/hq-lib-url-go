@@ -1,4 +1,4 @@
-package schemes_test
+package scheme_test
 
 import (
 	"slices"
@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	hqgourlschemes "github.com/hueristiq/hq-lib-url-go/schemes"
+	hqgourlschemes "github.com/hueristiq/hq-lib-url-go/internal/scheme"
 )
 
 func Test_Official_excludesObsoleteSchemes(t *testing.T) {

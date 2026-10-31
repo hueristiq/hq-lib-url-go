@@ -6,9 +6,9 @@
 //
 // # Entry points
 //
-// [parser.New] and [parser.Parser.Parse] turn a raw URL string into a structured value;
-// [extractor.New] and [extractor.Extractor.CompileRegex] build the regular expression
-// that finds URLs in text.
+// Use [parser.New] and [parser.Parser.Parse] to turn a raw URL string into a
+// structured value, or [extractor.New] and [extractor.Extractor.CompileRegex]
+// to build the regular expression that finds URLs in text.
 //
 // # Packages
 //
@@ -16,25 +16,14 @@
 //
 //   - [parser]: parses raw URL strings into a [net/url]-compatible struct with the host
 //     decomposed into subdomain, second-level domain, and top-level domain.
-//   - [psl]: matches hostnames against the Public Suffix List and holds the generated
-//     rule table used by [parser].
 //   - [extractor]: compiles configurable regular expressions that extract URLs — with
 //     or without schemes and hosts — and email addresses from text.
-//   - [schemes]: categorized lists of URL schemes (official, unofficial, no-authority).
-//   - [tlds]: categorized lists of top-level domains and public suffixes.
-//   - [unicodes]: generated Unicode character ranges for matching internationalized
-//     URLs.
 //
-// The data packages are regenerated from their public sources with go generate; see
-// generate.go for the directives.
+// The PSL lookup and the generated scheme, top-level-domain, and Unicode tables
+// live under internal/ and are regenerated with go generate; see generate.go for
+// the directives. The PSL generator is a separate nested module so the library
+// module itself has no runtime dependencies beyond the standard library.
 //
 // [parser]: github.com/hueristiq/hq-lib-url-go/parser
-// [psl]: github.com/hueristiq/hq-lib-url-go/psl
 // [extractor]: github.com/hueristiq/hq-lib-url-go/extractor
-// [schemes]: github.com/hueristiq/hq-lib-url-go/schemes
-// [tlds]: github.com/hueristiq/hq-lib-url-go/tlds
-// [unicodes]: github.com/hueristiq/hq-lib-url-go/unicodes
-//
-// The library packages rely on the Go standard library only; the PSL generator uses
-// golang.org/x/net/idna to produce A-labels.
 package url

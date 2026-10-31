@@ -1,4 +1,4 @@
-package tlds
+package tld
 
 // Pseudo is a sorted list of widely used unofficial or pseudo top-level domains (TLDs).
 //

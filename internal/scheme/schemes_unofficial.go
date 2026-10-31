@@ -1,4 +1,4 @@
-package schemes
+package scheme
 
 // Unofficial is a sorted list of well-known URL schemes that are not officially registered.
 //

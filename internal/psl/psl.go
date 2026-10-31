@@ -37,13 +37,37 @@ type List struct {
 // label is the public suffix and the preceding label is the registrable label.
 var defaultRule = &Rule{kind: pslWildcard, labels: 1}
 
-// Default is the full embedded Public Suffix List generated from publicsuffix.org,
-// including both the ICANN and private sections.
-var Default = newList(pslRules[:], defaultRule, true)
+var (
+	// defaultList is the full embedded Public Suffix List, including both the
+	// ICANN and private sections.
+	defaultList = newList(pslRules[:], defaultRule, true)
 
-// ICANN is the embedded Public Suffix List restricted to the ICANN section, excluding
-// private-domain suffixes such as "blogspot.com" and "s3.amazonaws.com".
-var ICANN = newList(pslRules[:], defaultRule, false)
+	// icannList is the embedded Public Suffix List restricted to the ICANN
+	// section, excluding private-domain suffixes such as "blogspot.com" and
+	// "s3.amazonaws.com".
+	icannList = newList(pslRules[:], defaultRule, false)
+)
+
+// DefaultList returns the full embedded Public Suffix List generated from
+// publicsuffix.org, including both the ICANN and private sections. The
+// returned list is immutable and safe for concurrent use.
+//
+// Returns:
+//   - list (*List): the full embedded list.
+func DefaultList() (list *List) {
+	return defaultList
+}
+
+// ICANNList returns the embedded Public Suffix List restricted to the ICANN
+// section, excluding private-domain suffixes such as "blogspot.com" and
+// "s3.amazonaws.com". The returned list is immutable and safe for concurrent
+// use.
+//
+// Returns:
+//   - list (*List): the ICANN-only list.
+func ICANNList() (list *List) {
+	return icannList
+}
 
 // newList builds a lookup table from a set of rules.
 //
@@ -99,6 +123,74 @@ func (l *List) Find(host string) (rule *Rule) {
 		}
 
 		part = part[i+1:]
+	}
+}
+
+// Kind returns the rule kind: "normal", "wildcard", or "exception". It
+// returns "" for a nil rule.
+//
+// Returns:
+//   - kind (string): the rule kind.
+func (r *Rule) Kind() (kind string) {
+	if r == nil {
+		return ""
+	}
+
+	switch r.kind {
+	case pslNormal:
+		return "normal"
+	case pslWildcard:
+		return "wildcard"
+	case pslException:
+		return "exception"
+	default:
+		return ""
+	}
+}
+
+// Suffix returns the rule suffix without the PSL wildcard or exception
+// marker. It returns "" for a nil rule.
+//
+// Returns:
+//   - suffix (string): the rule suffix.
+func (r *Rule) Suffix() (suffix string) {
+	if r == nil {
+		return ""
+	}
+
+	return r.value
+}
+
+// Private reports whether the rule belongs to the PSL private section. It
+// returns false for a nil rule.
+//
+// Returns:
+//   - private (bool): whether the rule is a private-section rule.
+func (r *Rule) Private() (private bool) {
+	if r == nil {
+		return false
+	}
+
+	return r.private
+}
+
+// String returns the canonical PSL text for the rule: the value prefixed with
+// "!" for an exception or "*." for a wildcard. It returns "" for a nil rule.
+//
+// Returns:
+//   - rule (string): the canonical rule text.
+func (r *Rule) String() (rule string) {
+	if r == nil {
+		return ""
+	}
+
+	switch r.kind {
+	case pslWildcard:
+		return "*." + r.value
+	case pslException:
+		return "!" + r.value
+	default:
+		return r.value
 	}
 }
 

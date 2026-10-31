@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"strings"
 
-	hqgourlpsl "github.com/hueristiq/hq-lib-url-go/psl"
+	hqgourlpsl "github.com/hueristiq/hq-lib-url-go/internal/psl"
 )
 
 // Parser is responsible for converting raw URL strings into the URL struct that includes
@@ -193,7 +193,7 @@ type OptionFunc func(parser *Parser)
 // Returns:
 //   - parser (*Parser): the newly created Parser instance.
 func New(ofs ...OptionFunc) (parser *Parser) {
-	parser = &Parser{rules: hqgourlpsl.Default}
+	parser = &Parser{rules: hqgourlpsl.DefaultList()}
 
 	for _, f := range ofs {
 		if f != nil {
@@ -234,7 +234,7 @@ func WithDefaultScheme(scheme string) (f OptionFunc) {
 //   - f (OptionFunc): an OptionFunc function that applies the ICANN-only list.
 func WithIgnorePrivate() (f OptionFunc) {
 	return func(parser *Parser) {
-		parser.rules = hqgourlpsl.ICANN
+		parser.rules = hqgourlpsl.ICANNList()
 	}
 }
 

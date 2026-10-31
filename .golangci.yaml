@@ -21,7 +21,7 @@ linters:
         - errcheck
         - errchkjson
         - errname
-        # - errorlint
+        - errorlint
         - exhaustive
         # - exhaustruct
         - exptostd
@@ -38,6 +38,7 @@ linters:
         # - goconst
         - gocritic
         # - gocyclo
+        - godoclint
         - godot
         - godox
         - goheader
@@ -90,9 +91,9 @@ linters:
         - staticcheck
         - tagalign
         # - tagliatelle
+        - testpackage
         - testableexamples
         - testifylint
-        # - testpackage
         - thelper
         - tparallel
         - unconvert
@@ -118,13 +119,13 @@ linters:
                   alias: hqgourlextractor
                 - pkg: github.com/hueristiq/hq-lib-url-go/parser
                   alias: hqgourlparser
-                - pkg: github.com/hueristiq/hq-lib-url-go/psl
+                - pkg: github.com/hueristiq/hq-lib-url-go/internal/psl
                   alias: hqgourlpsl
-                - pkg: github.com/hueristiq/hq-lib-url-go/schemes
+                - pkg: github.com/hueristiq/hq-lib-url-go/internal/scheme
                   alias: hqgourlschemes
-                - pkg: github.com/hueristiq/hq-lib-url-go/tlds
+                - pkg: github.com/hueristiq/hq-lib-url-go/internal/tld
                   alias: hqgourltlds
-                - pkg: github.com/hueristiq/hq-lib-url-go/unicodes
+                - pkg: github.com/hueristiq/hq-lib-url-go/internal/unicode
                   alias: hqgourlunicodes
         gocritic:
             enabled-tags:

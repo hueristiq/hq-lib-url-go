@@ -1,3 +1,4 @@
+//nolint:testpackage // tests exercise unexported behavior.
 package psl
 
 import (
@@ -118,12 +119,12 @@ func TestICANNExcludesPrivate(t *testing.T) {
 		left   string
 		suffix string
 	}{
-		{"default keeps a private suffix", Default, "blogspot.com", "", ""},
-		{"icann skips a private suffix", ICANN, "blogspot.com", "blogspot", "com"},
-		{"default under a private suffix", Default, "foo.blogspot.com", "foo", "blogspot.com"},
-		{"icann under a private suffix", ICANN, "foo.blogspot.com", "foo.blogspot", "com"},
-		{"icann skips a multi-label private suffix", ICANN, "s3.amazonaws.com", "s3.amazonaws", "com"},
-		{"icann unknown tld uses the default rule", ICANN, "example.invalidtld", "example", "invalidtld"},
+		{"default keeps a private suffix", DefaultList(), "blogspot.com", "", ""},
+		{"icann skips a private suffix", ICANNList(), "blogspot.com", "blogspot", "com"},
+		{"default under a private suffix", DefaultList(), "foo.blogspot.com", "foo", "blogspot.com"},
+		{"icann under a private suffix", ICANNList(), "foo.blogspot.com", "foo.blogspot", "com"},
+		{"icann skips a multi-label private suffix", ICANNList(), "s3.amazonaws.com", "s3.amazonaws", "com"},
+		{"icann unknown tld uses the default rule", ICANNList(), "example.invalidtld", "example", "invalidtld"},
 	}
 
 	for _, tt := range tests {

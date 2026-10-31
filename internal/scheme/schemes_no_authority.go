@@ -1,4 +1,4 @@
-package schemes
+package scheme
 
 // NoAuthority is a sorted list of well-known URL schemes that do not require an authority component.
 //

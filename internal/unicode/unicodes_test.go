@@ -1,4 +1,5 @@
-package unicodes
+//nolint:testpackage // tests exercise unexported behavior.
+package unicode
 
 import (
 	"regexp"
