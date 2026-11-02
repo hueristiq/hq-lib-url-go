@@ -5,6 +5,6 @@ package url
 // documentation lives in doc.go.
 
 //go:generate sh -c "cd cmd/pslgen && go run . -output ../../internal/psl/rules_gen.go"
-//go:generate sh -c "cd cmd/schemesgen && go run . -output ../../scheme/schemes_official_gen.go"
-//go:generate sh -c "cd cmd/tldsgen && go run . -output ../../tld/tlds_official_gen.go"
-//go:generate sh -c "cd cmd/unicodesgen && go run . -output ../../unicode/unicodes_gen.go"
+//go:generate sh -c "cd cmd/schemesgen && go run . -output ../../internal/scheme/schemes_official_gen.go"
+//go:generate sh -c "cd cmd/tldsgen && go run . -output ../../internal/tld/tlds_official_gen.go"
+//go:generate sh -c "cd cmd/unicodesgen && go run . -output ../../internal/unicode/unicodes_gen.go"

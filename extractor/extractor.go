@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"sync"
 
-	hqgourlscheme "github.com/hueristiq/hq-lib-url-go/scheme"
+	hqgourlscheme "github.com/hueristiq/hq-lib-url-go/internal/scheme"
 )
 
 // Extractor configures the URL extraction process.
@@ -33,6 +33,7 @@ type Extractor struct {
 	withHostPattern   string
 	withoutEmail      bool
 	withoutUserInfo   bool
+	custom            *regexp.Regexp
 
 	regexpOnce sync.Once
 	regexp     *regexp.Regexp
@@ -51,6 +52,10 @@ type Extractor struct {
 //   - err (error): a wrapped error when the composed pattern fails to compile, e.g. when a
 //     custom scheme or host pattern is invalid.
 func (e *Extractor) CompileRegex() (regex *regexp.Regexp, err error) {
+	if e.custom != nil {
+		return e.custom, nil
+	}
+
 	knownTLDPattern := knownTLDPatternOnce()
 
 	// domainPattern matches typical domains by combining subdomains, known TLDs, or 'localhost'.
@@ -222,6 +227,26 @@ func New(ofs ...OptionFunc) (extractor *Extractor) {
 	}
 
 	return extractor
+}
+
+// WithRegexp returns an OptionFunc that uses re as the extraction pattern
+// instead of building one from the other options. This is useful when the
+// caller already has a domain-specific or otherwise custom pattern. The
+// pattern is used as given; pair it with [Extractor.ExtractURLs] to keep the
+// boundary and glue cleanup behavior.
+//
+// Parameters:
+//   - re (*regexp.Regexp): the compiled extraction pattern. A nil value is
+//     ignored.
+//
+// Returns:
+//   - f (OptionFunc): a function that sets the custom pattern.
+func WithRegexp(re *regexp.Regexp) (f OptionFunc) {
+	return func(extractor *Extractor) {
+		if re != nil {
+			extractor.custom = re
+		}
+	}
 }
 
 // WithScheme returns an OptionFunc function that configures the Extractor to require URL schemes in the extraction process.

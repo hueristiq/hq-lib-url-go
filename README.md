@@ -4,11 +4,12 @@
 
 `hq-lib-url-go` is a [Go](https://golang.org/) package for working with URLs.
 
-## Table of Contents
+## Resources
 
 - [Features](#features)
 - [Installation](#installation)
 - [Usage](#usage)
+	- [Quick start](#quick-start)
 	- [Extraction](#extraction)
 	- [Parsing](#parsing)
 	- [Normalization](#normalization)
@@ -17,57 +18,83 @@
 
 ## Features
 
-- **URL Extraction:** Composed, longest-match regular expressions that find fully-qualified URLs, scheme-less host URLs, email addresses, and relative paths in any text, plus fine-grained functional options and exported pattern building blocks.
-- **URL Parsing:** Extends [`net/url`](https://pkg.go.dev/net/url) with a decomposition of the host into subdomain, SLD, and TLD, matched exactly against the embedded Public Suffix List — including multi-label public suffixes such as `co.uk` — with label-aware lookups that never match inside a longer suffix.
-- **Normalization:** Canonicalization — lowercase scheme and host, default-port removal, dot-segment removal, sorted query parameters — plus per-host scheme inference with `InferScheme`.
+- **URL extraction:** longest-match patterns find fully qualified URLs, scheme-less hosts, email addresses, and relative paths, with functional options and exported pattern blocks.
+- **PSL-aware parsing:** `parser` decomposes hosts into subdomain, SLD, and TLD against the embedded Public Suffix List, including multi-label and private suffixes, with label-aware matching.
+- **Normalization:** lowercase scheme and host, default-port removal, dot-segment removal, and sorted query parameters through `URL.Normalize`.
+- **Scheme inference:** `InferScheme` chooses `http` for local targets and `https` for everything else.
+- **Typed URL values:** `parser.URL` embeds `net/url.URL` and exposes the decomposed `Domain`, while `Apex` returns the registrable domain.
 
 ## Installation
+
+To install `hq-lib-url-go`, run the following command in your Go project:
 
 ```bash
 go get github.com/hueristiq/hq-lib-url-go@latest
 ```
 
-Requires Go 1.26 or later.
+Requires Go 1.26.0 or later.
 
 ## Usage
 
-The examples import the packages under the `hqgourl`-prefixed aliases:
+The examples import the packages under the `hqgourl`-prefixed aliases.
+
+### Quick start
+
+The root package covers the common cases with the default parser and extractor.
 
 ```go
+package main
+
 import (
+	"fmt"
+	"log"
+
 	hqgourl "github.com/hueristiq/hq-lib-url-go"
-	hqgourlextractor "github.com/hueristiq/hq-lib-url-go/extractor"
-	hqgourlparser "github.com/hueristiq/hq-lib-url-go/parser"
 )
-```
 
-### Quick Start
+func main() {
+	parsed, err := hqgourl.Parse("https://example.com/path?q=1")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-The root package covers the common cases with the default parser and
-extractor:
+	matches, err := hqgourl.Extract("see https://example.com/a and https://example.org/b")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-```go
-parsed, err := hqgourl.Parse("https://example.com/path?q=1")
-
-matches, err := hqgourl.Extract("see https://example.com/a and https://example.org/b")
+	fmt.Println(parsed.String())
+	fmt.Println(matches)
+}
 ```
 
 ### Extraction
 
-The `extractor` package scans text and pulls out URLs using a composed regular expression. `Extract` is the one-call entry point — the pattern is compiled once per extractor and cached:
+The `extractor` package scans text and pulls out URLs with a composed regular expression. `Extract` is the one-call entry point. The pattern is compiled once per extractor and cached.
 
 ```go
-e := hqgourlextractor.New(hqgourlextractor.WithScheme())
+package main
 
-urls, err := e.Extract("Check these out: ftp://ftp.example.com, https://secure.example.com, and mailto:someone@example.com.")
-if err != nil {
-	log.Fatal(err)
+import (
+	"fmt"
+	"log"
+
+	hqgourlextractor "github.com/hueristiq/hq-lib-url-go/extractor"
+)
+
+func main() {
+	e := hqgourlextractor.New(hqgourlextractor.WithScheme())
+
+	urls, err := e.Extract("Check these out: ftp://ftp.example.com, https://secure.example.com, and mailto:someone@example.com.")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(urls)
 }
-
-fmt.Println(urls)
 ```
 
-Configure it with functional options — here `WithScheme()`, which requires a scheme. Restrict schemes further with `WithSchemePattern`:
+Configure the extractor with functional options. `WithScheme()` requires a scheme, and `WithSchemePattern` restricts schemes further:
 
 ```go
 e := hqgourlextractor.New(
@@ -77,7 +104,7 @@ e := hqgourlextractor.New(
 
 With no options, relative paths such as `/docs/guide` match too. `CompileRegex` returns the raw compiled pattern for callers who want to drive matching themselves.
 
-The pattern building blocks are exported (`SchemePattern`, `KnownSchemePattern`, `IPv4Pattern`, `IPv6Pattern`, `PortPattern`, …) for reuse in custom configurations:
+The pattern building blocks are exported (`SchemePattern`, `KnownSchemePattern`, `IPv4Pattern`, `IPv6Pattern`, `PortPattern`, and others) for reuse in custom configurations:
 
 ```go
 e := hqgourlextractor.New(
@@ -87,58 +114,75 @@ e := hqgourlextractor.New(
 
 ### Parsing
 
-The `parser` package extends Go's `net/url` parsing with a detailed domain breakdown:
+The `parser` package extends Go's `net/url` parsing with a detailed domain breakdown.
 
 ```go
-p := hqgourlparser.New(hqgourlparser.WithDefaultScheme("https"))
+package main
 
-parsed, err := p.Parse("www.example.com/path/file.txt")
-if err != nil {
-	fmt.Println("Error parsing URL:", err)
+import (
+	"fmt"
+	"log"
 
-	return
+	hqgourlparser "github.com/hueristiq/hq-lib-url-go/parser"
+)
+
+func main() {
+	p := hqgourlparser.New(hqgourlparser.WithDefaultScheme("https"))
+
+	parsed, err := p.Parse("www.example.com/path/file.txt")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("Scheme: %s\n", parsed.Scheme)
+	fmt.Printf("Host: %s\n", parsed.Host)
+	fmt.Printf("Hostname: %s\n", parsed.Hostname())
+	fmt.Printf("Subdomain: %s\n", parsed.Domain.Subdomain)
+	fmt.Printf("Second-level domain (SLD): %s\n", parsed.Domain.SecondLevelDomain)
+	fmt.Printf("Top-level domain (TLD): %s\n", parsed.Domain.TopLevelDomain)
+	fmt.Printf("Path: %s\n", parsed.Path)
 }
-
-fmt.Printf("Scheme: %s\n", parsed.Scheme)
-fmt.Printf("Host: %s\n", parsed.Host)
-fmt.Printf("Hostname: %s\n", parsed.Hostname())
-fmt.Printf("Subdomain: %s\n", parsed.Domain.Subdomain)
-fmt.Printf("Second-Level Domain (SLD): %s\n", parsed.Domain.SecondLevelDomain)
-fmt.Printf("Top-Level Domain (TLD): %s\n", parsed.Domain.TopLevelDomain)
-fmt.Printf("Path: %s\n", parsed.Path)
 ```
 
-Hosts are decomposed with the embedded Public Suffix List: IP literals get a nil `Domain`; a single-label host such as `localhost` lands wholly in `SecondLevelDomain`; the most specific matching rule — including private, wildcard, exception, and punycode rules — supplies `TopLevelDomain`, with the label before it in `SecondLevelDomain` and the rest in `Subdomain`; a host that is itself a public suffix (e.g. `co.uk`) lands wholly in `TopLevelDomain`. Unknown TLDs use the implicit `*` rule, so the last label becomes `TopLevelDomain`.
+Hosts are decomposed with the embedded Public Suffix List. IP literals get a nil `Domain`. A single-label host such as `localhost` lands wholly in `SecondLevelDomain`. The most specific matching rule, including private, wildcard, exception, and punycode rules, supplies `TopLevelDomain`, with the label before it in `SecondLevelDomain` and the rest in `Subdomain`. A host that is itself a public suffix, such as `co.uk`, lands wholly in `TopLevelDomain`. Unknown TLDs use the implicit `*` rule, so the last label becomes `TopLevelDomain`.
 
 `Domain.Apex()` returns the registrable domain (SLD plus TLD). For `google.blogspot.com`, both this package and [`weppos/publicsuffix-go`](https://github.com/weppos/publicsuffix-go)'s `Domain` include the private `blogspot.com` suffix by default: `Apex()` is `google.blogspot.com`, and weppos returns `google.blogspot.com`. With `WithIgnorePrivate()`, this package gives `SLD="blogspot"`, `TLD="com"`, and `Apex() == "blogspot.com"`, while weppos with `IgnorePrivate: true` returns `blogspot.com`.
 
 ### Normalization
 
-`URL.Normalize` rewrites a parsed URL in place into a canonical form, and `InferScheme` guesses a scheme for a host that is missing one (`http` for local targets, `https` otherwise):
+`URL.Normalize` rewrites a parsed URL in place into a canonical form. `InferScheme` guesses a scheme for a host that is missing one: `http` for local targets, `https` otherwise.
 
 ```go
-p := hqgourlparser.New()
+package main
 
-parsed, err := p.Parse("https://WWW.EXAMPLE.COM:443/./a/../b/?b=2&a=1")
-if err != nil {
-	fmt.Println("Error parsing URL:", err)
+import (
+	"fmt"
+	"log"
 
-	return
+	hqgourlparser "github.com/hueristiq/hq-lib-url-go/parser"
+)
+
+func main() {
+	p := hqgourlparser.New()
+
+	parsed, err := p.Parse("https://WWW.EXAMPLE.COM:443/./a/../b/?b=2&a=1")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	parsed.Normalize()
+
+	fmt.Println(parsed.String())
+	fmt.Println(hqgourlparser.InferScheme("localhost:8080"))
+	fmt.Println(hqgourlparser.InferScheme("example.com"))
 }
-
-parsed.Normalize()
-
-fmt.Println(parsed.String()) // "https://www.example.com/b/?a=1&b=2"
-
-fmt.Println(hqgourlparser.InferScheme("localhost:8080")) // "http"
-fmt.Println(hqgourlparser.InferScheme("example.com"))    // "https"
 ```
 
 ## Contributing
 
 Contributions are welcome and encouraged! Feel free to submit [Pull Requests](https://github.com/hueristiq/hq-lib-url-go/pulls) or report [Issues](https://github.com/hueristiq/hq-lib-url-go/issues).
 
-A big thank you to all the [contributors](https://github.com/hueristiq/hq-lib-url-go/graphs/contributors) for their ongoing support!
+A big thank you to all the [contributors](https://github.com/hueristiq/hq-lib-url-go/graphs/contributors) for your ongoing support!
 
 ![contributors](https://contrib.rocks/image?repo=hueristiq/hq-lib-url-go&max=500)
 

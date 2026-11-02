@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	hqgourlscheme "github.com/hueristiq/hq-lib-url-go/scheme"
+	hqgourlscheme "github.com/hueristiq/hq-lib-url-go/internal/scheme"
 )
 
 func Test_Official_excludesObsoleteSchemes(t *testing.T) {

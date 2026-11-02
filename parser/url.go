@@ -22,6 +22,22 @@ type URL struct {
 	Domain *Domain
 }
 
+// NormalizeOptions controls the optional behavior of [URL.NormalizeWith]. The
+// zero value matches [URL.Normalize].
+type NormalizeOptions struct {
+	// DropFragment removes the fragment from the URL.
+	DropFragment bool
+
+	// KeepQueryOrder preserves the original query parameter order. By default
+	// the query is sorted by key when it parses cleanly.
+	KeepQueryOrder bool
+
+	// KeepDotSegments leaves "." and ".." path segments untouched and
+	// preserves RawPath, so an encoded "%2E%2E" never collapses into a
+	// parent-directory segment. By default dot segments are removed.
+	KeepDotSegments bool
+}
+
 // Normalize rewrites the URL in place into a canonical form:
 //
 //   - the scheme is lowercased;
@@ -35,6 +51,15 @@ type URL struct {
 // The fragment and user info are left untouched. Calling Normalize on a zero URL is a
 // no-op.
 func (u *URL) Normalize() {
+	u.NormalizeWith(NormalizeOptions{})
+}
+
+// NormalizeWith is [URL.Normalize] with optional fragment removal and query-order
+// preservation. The zero options value matches [URL.Normalize].
+//
+// Parameters:
+//   - opts (NormalizeOptions): the optional canonicalization behavior.
+func (u *URL) NormalizeWith(opts NormalizeOptions) {
 	if u == nil || u.URL == nil {
 		return
 	}
@@ -56,13 +81,19 @@ func (u *URL) Normalize() {
 
 	u.Host = host
 
-	u.Path = removeDotSegments(u.Path)
-	u.RawPath = ""
+	if !opts.KeepDotSegments {
+		u.Path = removeDotSegments(u.Path)
+		u.RawPath = ""
+	}
 
-	if u.RawQuery != "" {
+	if u.RawQuery != "" && !opts.KeepQueryOrder {
 		if values, err := url.ParseQuery(u.RawQuery); err == nil {
 			u.RawQuery = values.Encode()
 		}
+	}
+
+	if opts.DropFragment {
+		u.Fragment = ""
 	}
 
 	if u.Domain != nil {
