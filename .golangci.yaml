@@ -115,12 +115,14 @@ linters:
             min-occurrences: 3
         importas:
             alias:
+                - pkg: github.com/hueristiq/hq-lib-url-go
+                  alias: hqgourl
                 - pkg: github.com/hueristiq/hq-lib-url-go/extractor
                   alias: hqgourlextractor
-                - pkg: github.com/hueristiq/hq-lib-url-go/parser
-                  alias: hqgourlparser
                 - pkg: github.com/hueristiq/hq-lib-url-go/internal/psl
                   alias: hqgourlpsl
+                - pkg: github.com/hueristiq/hq-lib-url-go/parser
+                  alias: hqgourlparser
                 - pkg: github.com/hueristiq/hq-lib-url-go/scheme
                   alias: hqgourlscheme
                 - pkg: github.com/hueristiq/hq-lib-url-go/tld
@@ -138,6 +140,8 @@ linters:
                 - whyNoLint
         gocyclo:
             min-complexity: 10
+        testpackage:
+            skip-regexp: '(_internal|_bench|_fuzz)_test\.go$'
         whitespace:
             multi-if: true
             multi-func: true

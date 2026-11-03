@@ -172,15 +172,29 @@ func (p *Parser) parseDomain(hostname string) (domain *Domain) {
 	}
 }
 
-// OptionFunc defines a function type used for configuring a Parser instance. Options allow
-// customization of the Parser (e.g., setting a default scheme or custom TLDs) during
-// initialization. When the same option is supplied more than once, the last one wins.
-// A nil OptionFunc is ignored. The With* helpers cover common settings, and callers may
-// write custom options because [Parser] is exported.
+// Options configures a [Parser]: the knobs the With* helpers and custom
+// [OptionFunc] values may set.
+//
+// Fields:
+//   - DefaultScheme (string): the scheme applied to URLs that lack one (e.g.,
+//     "http", "https"); empty leaves scheme-less URLs relative.
+//   - IgnorePrivate (bool): restrict the Public Suffix List to the ICANN
+//     section, excluding private-domain suffixes such as "blogspot.com".
+//   - Lenient (bool): repair invalid percent escapes before parsing.
+type Options struct {
+	DefaultScheme string
+	IgnorePrivate bool
+	Lenient       bool
+}
+
+// OptionFunc configures [Options]. When the same option is supplied more than
+// once, the last one wins. A nil OptionFunc is ignored. The With* helpers
+// cover common settings, and callers may write custom options because
+// [Options] is exported.
 //
 // Parameters:
-//   - parser (*Parser): the Parser instance to configure.
-type OptionFunc func(parser *Parser)
+//   - opts (*Options): the Options instance to configure.
+type OptionFunc func(opts *Options)
 
 // New creates and initializes a new Parser instance with default settings: no default
 // scheme, and the full embedded Public Suffix List (ICANN and private sections) as the
@@ -193,12 +207,22 @@ type OptionFunc func(parser *Parser)
 // Returns:
 //   - parser (*Parser): the newly created Parser instance.
 func New(ofs ...OptionFunc) (parser *Parser) {
-	parser = &Parser{rules: hqgourlpsl.DefaultList()}
+	opts := &Options{}
 
-	for _, f := range ofs {
-		if f != nil {
-			f(parser)
+	for _, of := range ofs {
+		if of != nil {
+			of(opts)
 		}
+	}
+
+	parser = &Parser{
+		scheme:  opts.DefaultScheme,
+		lenient: opts.Lenient,
+		rules:   hqgourlpsl.DefaultList(),
+	}
+
+	if opts.IgnorePrivate {
+		parser.rules = hqgourlpsl.ICANNList()
 	}
 
 	return parser
@@ -213,11 +237,10 @@ func New(ofs ...OptionFunc) (parser *Parser) {
 //   - scheme (string): the default scheme to set (e.g., "http", "https").
 //
 // Returns:
-//   - f (OptionFunc): an OptionFunc function that applies the default scheme to a Parser
-//     instance.
+//   - f (OptionFunc): an OptionFunc function that applies the default scheme.
 func WithDefaultScheme(scheme string) (f OptionFunc) {
-	return func(parser *Parser) {
-		parser.scheme = scheme
+	return func(opts *Options) {
+		opts.DefaultScheme = scheme
 	}
 }
 
@@ -233,8 +256,8 @@ func WithDefaultScheme(scheme string) (f OptionFunc) {
 // Returns:
 //   - f (OptionFunc): an OptionFunc function that applies the ICANN-only list.
 func WithIgnorePrivate() (f OptionFunc) {
-	return func(parser *Parser) {
-		parser.rules = hqgourlpsl.ICANNList()
+	return func(opts *Options) {
+		opts.IgnorePrivate = true
 	}
 }
 
@@ -249,7 +272,7 @@ func WithIgnorePrivate() (f OptionFunc) {
 // Returns:
 //   - f (OptionFunc): an OptionFunc function that enables lenient parsing.
 func WithLenient() (f OptionFunc) {
-	return func(parser *Parser) {
-		parser.lenient = true
+	return func(opts *Options) {
+		opts.Lenient = true
 	}
 }
