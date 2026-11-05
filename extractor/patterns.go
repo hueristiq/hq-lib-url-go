@@ -116,7 +116,7 @@ var (
 	// with IANA. The pattern ensures that the scheme is followed by "://".
 	//
 	// This pattern ensures that only officially recognized schemes are matched. Matching is
-	// case-insensitive, as required by RFC 3986.
+	// case-insensitive, as required by [RFC 3986](https://www.rfc-editor.org/info/rfc3986/).
 	KnownOfficialSchemePattern = `(?:(?i)` + anyOf(hqgourlscheme.Official...) + `://)`
 
 	// KnownUnofficialSchemePattern defines a pattern for matching unofficial or less commonly
@@ -125,7 +125,7 @@ var (
 	// The pattern ensures that the scheme is followed by "://".
 	//
 	// This pattern is useful for applications that work with unofficial or niche hqgourlscheme.
-	// Matching is case-insensitive, as required by RFC 3986.
+	// Matching is case-insensitive, as required by [RFC 3986](https://www.rfc-editor.org/info/rfc3986/).
 	KnownUnofficialSchemePattern = `(?:(?i)` + anyOf(hqgourlscheme.Unofficial...) + `://)`
 
 	// KnownNoAuthoritySchemePattern defines a pattern for matching URL schemes that
@@ -134,7 +134,7 @@ var (
 	//
 	// This pattern is used for schemes where a host is not applicable, making it suitable for schemes
 	// that involve direct communication (e.g., email or telephone). Matching is case-insensitive, as
-	// required by RFC 3986.
+	// required by [RFC 3986](https://www.rfc-editor.org/info/rfc3986/).
 	KnownNoAuthoritySchemePattern = `(?:(?i)` + anyOf(hqgourlscheme.NoAuthority...) + `:)`
 
 	// KnownSchemePattern combines the patterns for officially recognized, unofficial,

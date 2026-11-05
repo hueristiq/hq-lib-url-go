@@ -7,7 +7,7 @@ import (
 )
 
 // Test_removeDotSegments checks the dot-segment removal algorithm against the vectors of
-// RFC 3986 §5.2.4, plus the relative and degenerate forms.
+// [RFC 3986](https://www.rfc-editor.org/info/rfc3986/) §5.2.4, plus the relative and degenerate forms.
 func Test_removeDotSegments(t *testing.T) {
 	t.Parallel()
 

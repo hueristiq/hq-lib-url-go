@@ -1,6 +1,6 @@
 // Command unicodesgen regenerates the allowed Unicode character ranges.
 //
-// It derives the regular-expression character classes for RFC 3987 ucschar from the
+// It derives the regular-expression character classes for [RFC 3987](https://www.rfc-editor.org/info/rfc3987/) ucschar from the
 // Unicode Character Database and emits the constants used by the unicodes package. Run
 // go generate from the module root.
 package main
@@ -100,7 +100,7 @@ func visit(rt *unicode.RangeTable, fn func(rune)) {
 //   - err (error): non-nil when the file cannot be created or the template cannot be
 //     executed.
 func writeUnicode(output string) (err error) {
-	// rfc3987Ranges contains the ranges of valid code points specified by RFC 3987.
+	// rfc3987Ranges contains the ranges of valid code points specified by [RFC 3987](https://www.rfc-editor.org/info/rfc3987/).
 	rfc3987Ranges := [][2]rune{
 		{0xA0, 0xD7FF},
 		{0xF900, 0xFDCF},

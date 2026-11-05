@@ -100,7 +100,7 @@
 //     parses as a host plus path instead of a relative reference. A scheme-less
 //     "host:port" input (digits after the colon) is treated as a host and gets the
 //     default scheme; any other URL whose first path segment contains ":" — an opaque
-//     URI such as "mailto:user@example.com" — already carries a scheme per RFC 3986 and
+//     URI such as "mailto:user@example.com" — already carries a scheme per [RFC 3986](https://www.rfc-editor.org/info/rfc3986/) and
 //     is left unchanged.
 //   - [WithIgnorePrivate] restricts the embedded Public Suffix List to its ICANN
 //     section, excluding private-domain suffixes such as "blogspot.com". The implicit

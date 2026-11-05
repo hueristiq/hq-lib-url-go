@@ -2,7 +2,7 @@ package parser
 
 import "strings"
 
-// DecodeUnreservedEscapes decodes percent-encoded RFC 3986 unreserved bytes
+// DecodeUnreservedEscapes decodes percent-encoded [RFC 3986](https://www.rfc-editor.org/info/rfc3986/) unreserved bytes
 // (ALPHA / DIGIT / "-" / "_" / "~") in raw and leaves every other escape
 // untouched. A dot deliberately stays encoded, as do reserved escapes such as
 // "%2F", so the result never gains a new path separator or parent-directory
@@ -48,7 +48,7 @@ func DecodeUnreservedEscapes(raw string) (decoded string) {
 }
 
 // isUnreserved reports whether a byte may be decoded from a percent escape.
-// It follows the RFC 3986 unreserved set except for ".", which stays encoded so
+// It follows the [RFC 3986](https://www.rfc-editor.org/info/rfc3986/) unreserved set except for ".", which stays encoded so
 // a "%2E%2E" sequence can never become a parent-directory segment.
 //
 // Parameters:

@@ -44,7 +44,7 @@ type NormalizeOptions struct {
 //   - the hostname is lowercased and a single trailing root dot is trimmed;
 //   - a port equal to the scheme's default port (e.g. 80 for http, 443 for https) is
 //     dropped — a non-default or malformed port is preserved verbatim;
-//   - dot segments ("." and "..") are removed from the path per RFC 3986 §5.2.4;
+//   - dot segments ("." and "..") are removed from the path per [RFC 3986](https://www.rfc-editor.org/info/rfc3986/) §5.2.4;
 //   - query parameters are sorted by key, when the raw query parses cleanly;
 //   - the Domain components are lowercased to match the normalized host.
 //
@@ -136,7 +136,7 @@ func splitHostPort(hostport string) (host, port string) {
 	return hostport, ""
 }
 
-// removeDotSegments applies the dot-segment removal algorithm of RFC 3986 §5.2.4 to a
+// removeDotSegments applies the dot-segment removal algorithm of [RFC 3986](https://www.rfc-editor.org/info/rfc3986/) §5.2.4 to a
 // URL path, resolving "." and ".." segments without touching trailing slashes.
 //
 // Parameters:
