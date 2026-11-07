@@ -21,7 +21,12 @@ import (
 //   - urls ([]string): the cleaned URLs found, in order of appearance.
 //   - err (error): non-nil when the extraction pattern cannot be compiled.
 func ExtractURLs(text string, ofs ...OptionFunc) (urls []string, err error) {
-	return New(ofs...).ExtractURLs(text)
+	extractor, err := New(ofs...)
+	if err != nil {
+		return nil, err
+	}
+
+	return extractor.ExtractURLs(text), nil
 }
 
 // ExtractURLs finds every URL in text and applies the boundary and cleanup
@@ -30,21 +35,15 @@ func ExtractURLs(text string, ofs ...OptionFunc) (urls []string, err error) {
 // rows glued together by a source-code delimiter are split into individual
 // URLs.
 //
-// The pattern is compiled on the first call and cached, like [Extractor.Extract].
+// The extraction pattern is compiled once by [New].
 //
 // Parameters:
 //   - text (string): the text to search.
 //
 // Returns:
 //   - urls ([]string): the cleaned URLs found, in order of appearance.
-//   - err (error): non-nil when the extraction pattern cannot be compiled.
-func (e *Extractor) ExtractURLs(text string) (urls []string, err error) {
-	regex, err := e.compiledRegex()
-	if err != nil {
-		return nil, err
-	}
-
-	for _, indexes := range regex.FindAllStringIndex(text, -1) {
+func (e *Extractor) ExtractURLs(text string) (urls []string) {
+	for _, indexes := range e.regexp.FindAllStringIndex(text, -1) {
 		start := indexes[0]
 
 		if start > 0 && isHostLabelCharacter(text[start-1]) {
@@ -83,19 +82,15 @@ func (e *Extractor) ExtractURLs(text string) (urls []string, err error) {
 //   - urls ([]string): the unique URLs found, in order of first appearance.
 //   - err (error): non-nil when the extraction pattern cannot be compiled.
 func ExtractURLsAll(text string, ofs ...OptionFunc) (urls []string, err error) {
-	extractor := New(ofs...)
+	extractor, err := New(ofs...)
+	if err != nil {
+		return nil, err
+	}
 
 	seen := make(map[string]struct{})
 
-	collect := func(value string) (ok bool) {
-		var matches []string
-
-		matches, err = extractor.ExtractURLs(value)
-		if err != nil {
-			return false
-		}
-
-		for _, match := range matches {
+	collect := func(value string) {
+		for _, match := range extractor.ExtractURLs(value) {
 			if _, exists := seen[match]; exists {
 				continue
 			}
@@ -104,18 +99,12 @@ func ExtractURLsAll(text string, ofs ...OptionFunc) (urls []string, err error) {
 
 			urls = append(urls, match)
 		}
-
-		return true
 	}
 
-	if !collect(text) {
-		return nil, err
-	}
+	collect(text)
 
 	if decoded := DecodeJSEscapes(html.UnescapeString(text)); decoded != text {
-		if !collect(decoded) {
-			return nil, err
-		}
+		collect(decoded)
 	}
 
 	return
@@ -133,7 +122,10 @@ func ExtractURLsAll(text string, ofs ...OptionFunc) (urls []string, err error) {
 //   - urls ([]string): the URLs found in the collapsed literals.
 //   - err (error): non-nil when the extraction pattern cannot be compiled.
 func ExtractCollapsedURLs(text string, ofs ...OptionFunc) (urls []string, err error) {
-	extractor := New(ofs...)
+	extractor, err := New(ofs...)
+	if err != nil {
+		return nil, err
+	}
 
 	for _, group := range JSLiteralGroups(text) {
 		if len(group.Pieces) == 1 && !group.HasExpr {
@@ -146,14 +138,7 @@ func ExtractCollapsedURLs(text string, ofs ...OptionFunc) (urls []string, err er
 			continue
 		}
 
-		var matches []string
-
-		matches, err = extractor.ExtractURLs(collapsed)
-		if err != nil {
-			return nil, err
-		}
-
-		urls = append(urls, matches...)
+		urls = append(urls, extractor.ExtractURLs(collapsed)...)
 	}
 
 	return
@@ -206,23 +191,6 @@ func ExtractSubdomains(text, domain string) (subdomains []string, err error) {
 	}
 
 	return
-}
-
-// compiledRegex compiles and caches the extraction pattern.
-//
-// Returns:
-//   - regex (*regexp.Regexp): the compiled pattern.
-//   - err (error): non-nil when compilation fails.
-func (e *Extractor) compiledRegex() (regex *regexp.Regexp, err error) {
-	e.regexpOnce.Do(func() {
-		e.regexp, e.regexpErr = e.CompileRegex()
-	})
-
-	if e.regexpErr != nil {
-		return nil, e.regexpErr
-	}
-
-	return e.regexp, nil
 }
 
 // splitGluedURLs splits a match that contains several URLs joined by a

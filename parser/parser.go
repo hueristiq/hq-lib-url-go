@@ -19,7 +19,7 @@ import (
 //   - lenient (bool): whether invalid percent escapes are repaired before parsing.
 //   - rules (*psl.List): the Public Suffix List rules used to decompose hosts. [New]
 //     installs the full embedded list, [WithIgnorePrivate] installs the ICANN-only list,
-//     and a nil value (the zero-value Parser) decomposes hosts positionally.
+//     and the zero-value Parser uses the full embedded list.
 type Parser struct {
 	scheme  string
 	lenient bool
@@ -45,9 +45,6 @@ type Parser struct {
 //     [WithIgnorePrivate] restricts it to the ICANN section. The most specific matching
 //     rule determines TopLevelDomain; the label before it lands in SecondLevelDomain, and
 //     the remaining labels in Subdomain.
-//   - When the parser has no rule set (the zero value), the host is decomposed
-//     positionally — every label before the last two lands in Subdomain, the second to
-//     last label lands in SecondLevelDomain — and TopLevelDomain is left empty.
 //   - When the entire host is a public suffix (e.g. "co.uk"), it lands wholly in
 //     TopLevelDomain.
 //   - An unknown TLD under the default Public Suffix List uses the implicit "*" rule,
@@ -140,16 +137,12 @@ func (p *Parser) parseDomain(hostname string) (domain *Domain) {
 		return &Domain{SecondLevelDomain: hostname}
 	}
 
-	rule := p.rules.Find(hostname)
-	if rule == nil {
-		// A nil rule list (the zero-value Parser) has no default rule: the last label
-		// sits in the TLD position but is not a known suffix, so decompose positionally
-		// and leave TopLevelDomain empty.
-		return &Domain{
-			Subdomain:         strings.Join(parts[:len(parts)-2], "."),
-			SecondLevelDomain: parts[len(parts)-2],
-		}
+	rules := p.rules
+	if rules == nil {
+		rules = hqgourlpsl.DefaultList()
 	}
+
+	rule := rules.Find(hostname)
 
 	left, suffix := rule.Decompose(hostname)
 	if left == "" {

@@ -83,12 +83,12 @@ import (
 )
 
 func main() {
-	e := hqgourlextractor.New(hqgourlextractor.WithScheme())
-
-	urls, err := e.Extract("Check these out: ftp://ftp.example.com, https://secure.example.com, and mailto:someone@example.com.")
+	e, err := hqgourlextractor.New(hqgourlextractor.WithScheme())
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	urls := e.Extract("Check these out: ftp://ftp.example.com, https://secure.example.com, and mailto:someone@example.com.")
 
 	fmt.Println(urls)
 }
@@ -97,19 +97,25 @@ func main() {
 Configure the extractor with functional options. `WithScheme()` requires a scheme, and `WithSchemePattern` restricts schemes further:
 
 ```go
-e := hqgourlextractor.New(
+e, err := hqgourlextractor.New(
 	hqgourlextractor.WithSchemePattern(`(?:https?|ftp)://`),
 )
+if err != nil {
+	log.Fatal(err)
+}
 ```
 
-With no options, relative paths such as `/docs/guide` match too. `CompileRegex` returns the raw compiled pattern for callers who want to drive matching themselves.
+With no options, relative paths such as `/docs/guide` match too. `Regexp` returns the pattern compiled by `New` for callers who need match indexes. `WithRegexp` supplies a complete custom pattern and cannot be combined with the generated-pattern options it would ignore.
 
 The pattern building blocks are exported (`SchemePattern`, `KnownSchemePattern`, `IPv4Pattern`, `IPv6Pattern`, `PortPattern`, and others) for reuse in custom configurations:
 
 ```go
-e := hqgourlextractor.New(
+e, err := hqgourlextractor.New(
 	hqgourlextractor.WithSchemePattern(hqgourlextractor.KnownSchemePattern),
 )
+if err != nil {
+	log.Fatal(err)
+}
 ```
 
 ### Parsing

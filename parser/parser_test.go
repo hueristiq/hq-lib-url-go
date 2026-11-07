@@ -735,7 +735,7 @@ func Test_Parser_zeroValue(t *testing.T) {
 	parsed, err := p.Parse("https://a.b.example/path")
 	require.NoError(t, err)
 
-	assert.Equal(t, &hqgourlparser.Domain{Subdomain: "a", SecondLevelDomain: "b"}, parsed.Domain)
+	assert.Equal(t, &hqgourlparser.Domain{Subdomain: "a", SecondLevelDomain: "b", TopLevelDomain: "example"}, parsed.Domain)
 }
 
 func TestParse_Lenient(t *testing.T) {

@@ -9,8 +9,7 @@
 // [Parse] and [Extract] cover the common cases with the default parser and
 // extractor. Use [parser.New] and [parser.Parser.Parse] for structured
 // decomposition with custom options, or [extractor.New] and
-// [extractor.Extractor.CompileRegex] to build the regular expression that
-// finds URLs in text.
+// [extractor.Extractor.Extract] to find URLs with a custom pattern.
 //
 // # Packages
 //

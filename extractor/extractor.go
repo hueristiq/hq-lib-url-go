@@ -1,9 +1,9 @@
 package extractor
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
-	"sync"
 
 	hqgourlscheme "github.com/hueristiq/hq-lib-url-go/internal/scheme"
 )
@@ -23,9 +23,7 @@ import (
 //   - withHostPattern (string): a custom regular expression pattern to match URL hosts.
 //   - withoutEmail (bool): whether bare email addresses are excluded from extraction.
 //   - withoutUserInfo (bool): whether user info in the authority is excluded from extraction.
-//   - regexpOnce (sync.Once): guards the lazy compilation of the extraction regexp.
-//   - regexp (*regexp.Regexp): the compiled extraction pattern, cached for [Extractor.Extract].
-//   - regexpErr (error): the compilation failure cached alongside regexp.
+//   - regexp (*regexp.Regexp): the extraction pattern compiled by [New].
 type Extractor struct {
 	withScheme        bool
 	withSchemePattern string
@@ -34,13 +32,10 @@ type Extractor struct {
 	withoutEmail      bool
 	withoutUserInfo   bool
 	custom            *regexp.Regexp
-
-	regexpOnce sync.Once
-	regexp     *regexp.Regexp
-	regexpErr  error
+	regexp            *regexp.Regexp
 }
 
-// CompileRegex constructs and compiles a regular expression pattern for URL extraction.
+// compileRegex constructs and compiles a regular expression pattern for URL extraction.
 // It builds a composite regex pattern that can capture various URL forms, taking into account user
 // configuration for required schemes or hosts, as well as any custom patterns provided.
 // The generated pattern can match fully-qualified URLs (with schemes and hosts), email addresses,
@@ -51,11 +46,7 @@ type Extractor struct {
 //     longest match at each position, that can be used to extract URLs from text.
 //   - err (error): a wrapped error when the composed pattern fails to compile, e.g. when a
 //     custom scheme or host pattern is invalid.
-func (e *Extractor) CompileRegex() (regex *regexp.Regexp, err error) {
-	if e.custom != nil {
-		return e.custom, nil
-	}
-
+func (e *Extractor) compileRegex() (regex *regexp.Regexp, err error) {
 	knownTLDPattern := knownTLDPatternOnce()
 
 	// domainPattern matches typical domains by combining subdomains, known TLDs, or 'localhost'.
@@ -163,7 +154,7 @@ func (e *Extractor) CompileRegex() (regex *regexp.Regexp, err error) {
 	// Compiling the final regex pattern.
 	regex, err = regexp.Compile(pattern)
 	if err != nil {
-		return nil, fmt.Errorf("extractor.CompileRegex: %w", err)
+		return nil, fmt.Errorf("extractor.compileRegex: %w", err)
 	}
 
 	// Ensures the longest possible match is found.
@@ -172,9 +163,8 @@ func (e *Extractor) CompileRegex() (regex *regexp.Regexp, err error) {
 	return regex, nil
 }
 
-// Extract finds every URL in text using the configured extraction pattern,
-// returning the matches in the order they appear. The pattern is compiled on
-// the first call and cached, so repeated calls share one compiled regex.
+// Extract finds every URL in text using the pattern compiled by [New],
+// returning the matches in the order they appear.
 //
 // Parameters:
 //   - text (string): the text to search.
@@ -182,20 +172,18 @@ func (e *Extractor) CompileRegex() (regex *regexp.Regexp, err error) {
 // Returns:
 //   - matches ([]string): the URLs found, in order of appearance; empty when
 //     none match.
-//   - err (error): a wrapped error when the composed pattern fails to compile,
-//     e.g. when a custom scheme or host pattern is invalid.
-func (e *Extractor) Extract(text string) (matches []string, err error) {
-	e.regexpOnce.Do(func() {
-		e.regexp, e.regexpErr = e.CompileRegex()
-	})
+func (e *Extractor) Extract(text string) (matches []string) {
+	return e.regexp.FindAllString(text, -1)
+}
 
-	if e.regexpErr != nil {
-		return nil, e.regexpErr
-	}
-
-	matches = e.regexp.FindAllString(text, -1)
-
-	return matches, nil
+// Regexp returns the compiled extraction pattern for callers that need match
+// indexes rather than the strings returned by [Extractor.Extract]. The pattern
+// is shared and safe for concurrent matching; callers must not reconfigure it.
+//
+// Returns:
+//   - regex (*regexp.Regexp): the pattern compiled by [New].
+func (e *Extractor) Regexp() (regex *regexp.Regexp) {
+	return e.regexp
 }
 
 // OptionFunc defines a functional option for configuring an Extractor instance.
@@ -216,8 +204,9 @@ type OptionFunc func(extractor *Extractor)
 //   - ofs (...OptionFunc): a variadic list of OptionFunc functions that modify the Extractor's settings.
 //
 // Returns:
-//   - extractor (*Extractor): the configured Extractor instance.
-func New(ofs ...OptionFunc) (extractor *Extractor) {
+//   - extractor (*Extractor): the configured Extractor with its compiled pattern.
+//   - err (error): non-nil when a pattern is invalid or options conflict.
+func New(ofs ...OptionFunc) (extractor *Extractor, err error) {
 	extractor = &Extractor{}
 
 	for _, f := range ofs {
@@ -226,7 +215,22 @@ func New(ofs ...OptionFunc) (extractor *Extractor) {
 		}
 	}
 
-	return extractor
+	if extractor.custom != nil {
+		if extractor.withScheme || extractor.withHost || extractor.withoutEmail || extractor.withoutUserInfo {
+			return nil, errors.New("extractor.New: WithRegexp cannot be combined with other extraction options")
+		}
+
+		extractor.regexp = extractor.custom
+
+		return extractor, nil
+	}
+
+	extractor.regexp, err = extractor.compileRegex()
+	if err != nil {
+		return nil, fmt.Errorf("extractor.New: %w", err)
+	}
+
+	return extractor, nil
 }
 
 // WithRegexp returns an OptionFunc that uses re as the extraction pattern

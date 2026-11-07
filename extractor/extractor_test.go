@@ -2,6 +2,7 @@ package extractor_test
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,6 +10,16 @@ import (
 
 	hqgourlextractor "github.com/hueristiq/hq-lib-url-go/extractor"
 )
+
+func mustNew(tb testing.TB, ofs ...hqgourlextractor.OptionFunc) (extractor *hqgourlextractor.Extractor) {
+	tb.Helper()
+
+	extractor, err := hqgourlextractor.New(ofs...)
+
+	require.NoError(tb, err)
+
+	return
+}
 
 // corpus is a shared sample text covering the URL forms the extractor recognizes:
 // scheme URLs (with user info, ports, queries, fragments), Unicode and punycode
@@ -234,10 +245,10 @@ var wantWithHostPattern = []string{
 func Test_Extractor_New(t *testing.T) {
 	t.Parallel()
 
-	assert.NotNil(t, hqgourlextractor.New())
+	assert.NotNil(t, mustNew(t))
 }
 
-func Test_Extractor_CompileRegex(t *testing.T) {
+func Test_Extractor_Regexp(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -271,9 +282,8 @@ func Test_Extractor_CompileRegex(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			regex, err := hqgourlextractor.New(tt.options...).CompileRegex()
+			regex := mustNew(t, tt.options...).Regexp()
 
-			require.NoError(t, err)
 			require.NotNil(t, regex)
 
 			assert.Equal(t, tt.want, regex.FindAllString(corpus, -1))
@@ -281,7 +291,7 @@ func Test_Extractor_CompileRegex(t *testing.T) {
 	}
 }
 
-func Test_Extractor_CompileRegex_withoutEmail(t *testing.T) {
+func Test_Extractor_Regexp_withoutEmail(t *testing.T) {
 	t.Parallel()
 
 	text := `
@@ -296,15 +306,14 @@ func Test_Extractor_CompileRegex_withoutEmail(t *testing.T) {
 		"admin@example.com",
 	}
 
-	regex, err := hqgourlextractor.New(hqgourlextractor.WithoutEmail()).CompileRegex()
+	regex := mustNew(t, hqgourlextractor.WithoutEmail()).Regexp()
 
-	require.NoError(t, err)
 	require.NotNil(t, regex)
 
 	assert.Equal(t, want, regex.FindAllString(text, -1))
 }
 
-func Test_Extractor_CompileRegex_withoutUserInfo(t *testing.T) {
+func Test_Extractor_Regexp_withoutUserInfo(t *testing.T) {
 	t.Parallel()
 
 	hostPattern := `(?:(?:\w+[.])*example\.com` + hqgourlextractor.PortOptionalPattern + `)`
@@ -323,18 +332,17 @@ func Test_Extractor_CompileRegex_withoutUserInfo(t *testing.T) {
 		"https://example.com/public",
 	}
 
-	regex, err := hqgourlextractor.New(
+	regex := mustNew(t,
 		hqgourlextractor.WithHostPattern(hostPattern),
 		hqgourlextractor.WithoutUserInfo(),
-	).CompileRegex()
+	).Regexp()
 
-	require.NoError(t, err)
 	require.NotNil(t, regex)
 
 	assert.Equal(t, want, regex.FindAllString(text, -1))
 }
 
-func Test_Extractor_CompileRegex_withoutEmailAndUserInfo(t *testing.T) {
+func Test_Extractor_Regexp_withoutEmailAndUserInfo(t *testing.T) {
 	t.Parallel()
 
 	hostPattern := `(?:(?:\w+[.])*example\.com` + hqgourlextractor.PortOptionalPattern + `)`
@@ -350,19 +358,18 @@ func Test_Extractor_CompileRegex_withoutEmailAndUserInfo(t *testing.T) {
 		"example.com",
 	}
 
-	regex, err := hqgourlextractor.New(
+	regex := mustNew(t,
 		hqgourlextractor.WithHostPattern(hostPattern),
 		hqgourlextractor.WithoutEmail(),
 		hqgourlextractor.WithoutUserInfo(),
-	).CompileRegex()
+	).Regexp()
 
-	require.NoError(t, err)
 	require.NotNil(t, regex)
 
 	assert.Equal(t, want, regex.FindAllString(text, -1))
 }
 
-func Test_Extractor_CompileRegex_withoutUserInfo_host(t *testing.T) {
+func Test_Extractor_Regexp_withoutUserInfo_host(t *testing.T) {
 	t.Parallel()
 
 	//nolint:gosec // G101: the credentials are fake, exercising user info matching.
@@ -378,18 +385,17 @@ func Test_Extractor_CompileRegex_withoutUserInfo_host(t *testing.T) {
 		"mailto:user@example.com",
 	}
 
-	regex, err := hqgourlextractor.New(
+	regex := mustNew(t,
 		hqgourlextractor.WithHost(),
 		hqgourlextractor.WithoutUserInfo(),
-	).CompileRegex()
+	).Regexp()
 
-	require.NoError(t, err)
 	require.NotNil(t, regex)
 
 	assert.Equal(t, want, regex.FindAllString(text, -1))
 }
 
-func Test_Extractor_CompileRegex_default(t *testing.T) {
+func Test_Extractor_Regexp_default(t *testing.T) {
 	t.Parallel()
 
 	text := `
@@ -406,15 +412,14 @@ func Test_Extractor_CompileRegex_default(t *testing.T) {
 		"assets/css/site.css",
 	}
 
-	regex, err := hqgourlextractor.New().CompileRegex()
+	regex := mustNew(t).Regexp()
 
-	require.NoError(t, err)
 	require.NotNil(t, regex)
 
 	assert.Equal(t, want, regex.FindAllString(text, -1))
 }
 
-func Test_Extractor_CompileRegex_portBoundaries(t *testing.T) {
+func Test_Extractor_Regexp_portBoundaries(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -451,9 +456,8 @@ func Test_Extractor_CompileRegex_portBoundaries(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			regex, err := hqgourlextractor.New(tt.options...).CompileRegex()
+			regex := mustNew(t, tt.options...).Regexp()
 
-			require.NoError(t, err)
 			require.NotNil(t, regex)
 
 			assert.Equal(t, tt.want, regex.FindAllString(tt.text, -1))
@@ -461,7 +465,7 @@ func Test_Extractor_CompileRegex_portBoundaries(t *testing.T) {
 	}
 }
 
-func Test_Extractor_CompileRegex_punycode(t *testing.T) {
+func Test_Extractor_Regexp_punycode(t *testing.T) {
 	t.Parallel()
 
 	text := "Visit https://xn--nxasmq6b.example.com and https://example.xn--p1ai now."
@@ -471,15 +475,14 @@ func Test_Extractor_CompileRegex_punycode(t *testing.T) {
 		"https://example.xn--p1ai",
 	}
 
-	regex, err := hqgourlextractor.New(hqgourlextractor.WithScheme()).CompileRegex()
+	regex := mustNew(t, hqgourlextractor.WithScheme()).Regexp()
 
-	require.NoError(t, err)
 	require.NotNil(t, regex)
 
 	assert.Equal(t, want, regex.FindAllString(text, -1))
 }
 
-func Test_Extractor_CompileRegex_invalidPattern(t *testing.T) {
+func TestNew_InvalidConfiguration(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -494,38 +497,40 @@ func Test_Extractor_CompileRegex_invalidPattern(t *testing.T) {
 			"invalid host pattern",
 			[]hqgourlextractor.OptionFunc{hqgourlextractor.WithHostPattern(`[`)},
 		},
+		{
+			"custom pattern with ignored options",
+			[]hqgourlextractor.OptionFunc{hqgourlextractor.WithRegexp(regexp.MustCompile(`https://\S+`)), hqgourlextractor.WithHost()},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			regex, err := hqgourlextractor.New(tt.options...).CompileRegex()
+			extractor, err := hqgourlextractor.New(tt.options...)
 
-			require.Nil(t, regex)
 			require.Error(t, err)
-			assert.ErrorContains(t, err, "extractor.CompileRegex")
+			assert.Nil(t, extractor)
+			assert.ErrorContains(t, err, "extractor.New")
 		})
 	}
 }
 
-func Test_Extractor_CompileRegex_schemeWithDigits(t *testing.T) {
+func Test_Extractor_Regexp_schemeWithDigits(t *testing.T) {
 	t.Parallel()
 
-	regex, err := hqgourlextractor.New(hqgourlextractor.WithScheme()).CompileRegex()
+	regex := mustNew(t, hqgourlextractor.WithScheme()).Regexp()
 
-	require.NoError(t, err)
 	require.NotNil(t, regex)
 
 	assert.Equal(t, []string{"h323://example.com/call"}, regex.FindAllString("h323://example.com/call", -1))
 }
 
-func Test_Extractor_CompileRegex_schemeCaseInsensitive(t *testing.T) {
+func Test_Extractor_Regexp_schemeCaseInsensitive(t *testing.T) {
 	t.Parallel()
 
-	regex, err := hqgourlextractor.New(hqgourlextractor.WithScheme()).CompileRegex()
+	regex := mustNew(t, hqgourlextractor.WithScheme()).Regexp()
 
-	require.NoError(t, err)
 	require.NotNil(t, regex)
 
 	for _, text := range []string{
@@ -538,12 +543,11 @@ func Test_Extractor_CompileRegex_schemeCaseInsensitive(t *testing.T) {
 	}
 }
 
-func Test_Extractor_CompileRegex_hostQueryFragment(t *testing.T) {
+func Test_Extractor_Regexp_hostQueryFragment(t *testing.T) {
 	t.Parallel()
 
-	regex, err := hqgourlextractor.New(hqgourlextractor.WithHost()).CompileRegex()
+	regex := mustNew(t, hqgourlextractor.WithHost()).Regexp()
 
-	require.NoError(t, err)
 	require.NotNil(t, regex)
 
 	tests := []struct {
@@ -568,15 +572,14 @@ func Test_Extractor_CompileRegex_hostQueryFragment(t *testing.T) {
 	}
 }
 
-func Test_Extractor_CompileRegex_customPatternGrouping(t *testing.T) {
+func Test_Extractor_Regexp_customPatternGrouping(t *testing.T) {
 	t.Parallel()
 
 	t.Run("scheme alternation", func(t *testing.T) {
 		t.Parallel()
 
-		regex, err := hqgourlextractor.New(hqgourlextractor.WithSchemePattern(`http://|https://`)).CompileRegex()
+		regex := mustNew(t, hqgourlextractor.WithSchemePattern(`http://|https://`)).Regexp()
 
-		require.NoError(t, err)
 		require.NotNil(t, regex)
 
 		text := "http://example.com https://example.com/x"
@@ -587,12 +590,11 @@ func Test_Extractor_CompileRegex_customPatternGrouping(t *testing.T) {
 	t.Run("host alternation in email", func(t *testing.T) {
 		t.Parallel()
 
-		regex, err := hqgourlextractor.New(
+		regex := mustNew(t,
 			hqgourlextractor.WithHostPattern(`example\.com|example\.org`),
 			hqgourlextractor.WithoutUserInfo(),
-		).CompileRegex()
+		).Regexp()
 
-		require.NoError(t, err)
 		require.NotNil(t, regex)
 
 		assert.Equal(t, []string{"admin@example.org"}, regex.FindAllString("admin@example.org", -1))
@@ -601,16 +603,15 @@ func Test_Extractor_CompileRegex_customPatternGrouping(t *testing.T) {
 	t.Run("host alternation in URL", func(t *testing.T) {
 		t.Parallel()
 
-		regex, err := hqgourlextractor.New(hqgourlextractor.WithHostPattern(`example\.com|example\.org`)).CompileRegex()
+		regex := mustNew(t, hqgourlextractor.WithHostPattern(`example\.com|example\.org`)).Regexp()
 
-		require.NoError(t, err)
 		require.NotNil(t, regex)
 
 		assert.Equal(t, []string{"example.org/x"}, regex.FindAllString("example.org/x", -1))
 	})
 }
 
-func Test_Extractor_CompileRegex_dataScheme(t *testing.T) {
+func Test_Extractor_Regexp_dataScheme(t *testing.T) {
 	t.Parallel()
 
 	const dataURL = "data:text/plain;base64,aGVsbG8="
@@ -628,9 +629,8 @@ func Test_Extractor_CompileRegex_dataScheme(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			regex, err := hqgourlextractor.New(tt.options...).CompileRegex()
+			regex := mustNew(t, tt.options...).Regexp()
 
-			require.NoError(t, err)
 			require.NotNil(t, regex)
 
 			assert.Equal(t, []string{dataURL}, regex.FindAllString(dataURL, -1))
@@ -641,22 +641,20 @@ func Test_Extractor_CompileRegex_dataScheme(t *testing.T) {
 func Test_Extractor_New_IgnoresNilOptions(t *testing.T) {
 	t.Parallel()
 
-	e := hqgourlextractor.New(nil)
+	e := mustNew(t, nil)
 	require.NotNil(t, e)
 }
 
-// ExampleExtract demonstrates the one-call extraction entry point.
+// ExampleExtractor_Extract demonstrates the one-call extraction entry point.
 func ExampleExtractor_Extract() {
-	e := hqgourlextractor.New()
-
-	matches, err := e.Extract("Visit https://example.com and https://scanme.sh!")
+	e, err := hqgourlextractor.New()
 	if err != nil {
 		fmt.Println(err)
 
 		return
 	}
 
-	for _, match := range matches {
+	for _, match := range e.Extract("Visit https://example.com and https://scanme.sh!") {
 		fmt.Println(match)
 	}
 	// Output:

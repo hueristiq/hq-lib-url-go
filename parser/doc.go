@@ -38,9 +38,7 @@
 //   - An unknown TLD under the default rules uses the implicit "*" rule, so the last
 //     label becomes [Domain.TopLevelDomain], matching the reference Public Suffix List
 //     algorithm.
-//   - A zero-value Parser has no rule set and decomposes the host positionally: the
-//     labels before the last two land in [Domain.Subdomain], the second to last label
-//     lands in [Domain.SecondLevelDomain], and [Domain.TopLevelDomain] is left empty.
+//   - A zero-value Parser uses the full embedded Public Suffix List, matching New.
 //
 // Matching is case-insensitive and ignores a trailing root dot; the Domain components
 // are stored lowercase. Rule lookup is exact at label boundaries, so a label is never
@@ -114,8 +112,7 @@
 //
 // # Concurrency
 //
-// A Parser is safe for concurrent use once configured: [Parser.Parse] only reads the
-// configured settings. The Set* methods and options mutate those settings and must not
-// run concurrently with parsing or with each other. Parsed [URL] and [Domain] values are
-// independent and safe to share across goroutines.
+// A Parser is safe for concurrent use after construction. Its options are
+// applied only by New, before the Parser is shared. Parsed [URL] and [Domain]
+// values are independent and safe to share across goroutines.
 package parser

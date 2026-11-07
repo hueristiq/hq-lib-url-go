@@ -6,9 +6,11 @@
 //
 // # Entry points
 //
-// [New] returns an [Extractor], and [Extractor.CompileRegex] compiles the configured
-// extractor into a [regexp.Regexp] tuned to find the longest match at each position,
-// returning an error when a custom pattern fails to compile.
+// [New] compiles the configured pattern and returns an [Extractor] or a
+// construction error. [Extractor.Extract] returns raw matches;
+// [Extractor.ExtractURLs] applies scanner-oriented boundary and glue cleanup.
+// [Extractor.Regexp] exposes the compiled [regexp.Regexp] when callers need
+// match indexes rather than strings.
 //
 // # Extraction
 //
@@ -76,7 +78,6 @@
 //
 // # Concurrency
 //
-// An Extractor is safe for concurrent use once configured: [Extractor.CompileRegex] only
-// reads the configured settings. The Set* methods and options mutate those settings and
-// must not run concurrently with compilation or with each other.
+// An Extractor is safe for concurrent matching after construction. Its options
+// are applied only by New, before the Extractor is shared.
 package extractor

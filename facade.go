@@ -30,5 +30,10 @@ func Parse(raw string) (parsed *hqgourlparser.URL, err error) {
 //     none match.
 //   - err (error): non-nil when the composed pattern fails to compile.
 func Extract(text string) (matches []string, err error) {
-	return hqgourlextractor.New().Extract(text)
+	extractor, err := hqgourlextractor.New()
+	if err != nil {
+		return nil, err
+	}
+
+	return extractor.Extract(text), nil
 }

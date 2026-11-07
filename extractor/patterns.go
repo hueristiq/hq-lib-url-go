@@ -205,7 +205,7 @@ var boundedTLDs, unboundedTLDs = splitTLDs(slices.Concat(hqgourltld.Official, hq
 
 // knownTLDPatternOnce memoizes the known-TLD alternation, which splices the bounded and
 // unbounded TLD lists into a large pattern string. Composing it is done once per process
-// (on first use) instead of on every CompileRegex call.
+// (on first use) instead of on every New call.
 var knownTLDPatternOnce = sync.OnceValue(func() string {
 	// Combines punycode, bounded TLDs (followed by a word boundary), and unbounded
 	// TLDs into a single pattern, kept case-insensitive with `(?i)`.

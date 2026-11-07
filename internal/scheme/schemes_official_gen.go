@@ -304,6 +304,7 @@ var Official = []string{
 	"oid",
 	"onenote",
 	"onenote-cmd",
+	"op",
 	"opaquelocktoken",
 	"openid",
 	"openpgp4fpr",
