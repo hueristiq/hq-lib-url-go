@@ -202,7 +202,7 @@ func ExtractSubdomains(text, domain string) (subdomains []string, err error) {
 // Returns:
 //   - urls ([]string): the individual URLs.
 func splitGluedURLs(match string) (urls []string) {
-	glue := gluedSchemePattern.FindAllStringIndex(match, -1)
+	glue := gluedSchemeIndexes(match)
 
 	if len(glue) == 0 {
 		if value := trimGluedColumns(match); value != "" {
@@ -216,9 +216,9 @@ func splitGluedURLs(match string) (urls []string) {
 
 	start := 0
 
-	for _, indexes := range glue {
-		value := match[start:indexes[0]]
-		start = indexes[0] + 1
+	for _, index := range glue {
+		value := match[start:index]
+		start = index + 1
 
 		if value = trimGluedColumns(value); value != "" {
 			urls = append(urls, value)
@@ -243,12 +243,12 @@ func splitGluedURLs(match string) (urls []string) {
 func trimGluedColumns(value string) (trimmed string) {
 	trimmed = trimCodeGlue(value)
 
-	if statuses := gluedStatusPattern.FindAllStringIndex(trimmed, -1); len(statuses) > 0 {
-		return trimmed[:statuses[len(statuses)-1][0]]
+	if status := gluedStatusIndex(trimmed); status >= 0 {
+		return trimmed[:status]
 	}
 
-	if methods := gluedMethodPattern.FindStringIndex(trimmed); methods != nil {
-		trimmed = trimmed[:methods[0]]
+	if method := gluedMethodIndex(trimmed); method >= 0 {
+		trimmed = trimmed[:method]
 	}
 
 	return
@@ -397,8 +397,80 @@ func isHostLabelCharacter(character byte) (ok bool) {
 	return
 }
 
-var (
-	gluedSchemePattern = regexp.MustCompile(`[,;|][Hh][Tt]{2}[Pp][Ss]?://`)
-	gluedStatusPattern = regexp.MustCompile(`[,;|]\d{3}(?:[,;|]|$)`)
-	gluedMethodPattern = regexp.MustCompile(`[,;|][A-Z]{2,8}$`)
-)
+func isGlueDelimiter(character byte) bool {
+	return character == ',' || character == ';' || character == '|'
+}
+
+func gluedSchemeIndexes(match string) (indexes []int) {
+	for i := 0; i < len(match); i++ {
+		if !isGlueDelimiter(match[i]) {
+			continue
+		}
+
+		length := 0
+
+		switch {
+		case len(match)-i >= len(",https://") && strings.EqualFold(match[i:i+len(",https://")], ",https://"):
+			length = len(",https://")
+		case len(match)-i >= len(",http://") && strings.EqualFold(match[i:i+len(",http://")], ",http://"):
+			length = len(",http://")
+		}
+
+		if length > 0 {
+			indexes = append(indexes, i)
+			i += length - 1
+		}
+	}
+
+	return indexes
+}
+
+func gluedStatusIndex(match string) (index int) {
+	index = -1
+
+	for i := 0; i+4 < len(match); i++ {
+		if !isGlueDelimiter(match[i]) {
+			continue
+		}
+
+		if match[i+1] < '0' || match[i+1] > '9' {
+			continue
+		}
+
+		if match[i+2] < '0' || match[i+2] > '9' {
+			continue
+		}
+
+		if match[i+3] < '0' || match[i+3] > '9' {
+			continue
+		}
+
+		if i+5 < len(match) && !isGlueDelimiter(match[i+4]) {
+			continue
+		}
+
+		index = i
+	}
+
+	return index
+}
+
+func gluedMethodIndex(match string) (index int) {
+	index = strings.LastIndexAny(match, ",;|")
+	if index < 0 {
+		return -1
+	}
+
+	method := match[index+1:]
+	if len(method) < 2 || len(method) > 8 {
+		return -1
+	}
+
+	for _, character := range method {
+		if character < 'A' || character > 'Z' {
+			return -1
+		}
+	}
+
+	return index
+}
