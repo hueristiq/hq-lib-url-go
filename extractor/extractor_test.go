@@ -21,11 +21,6 @@ func mustNew(tb testing.TB, ofs ...hqgourlextractor.OptionFunc) (extractor *hqgo
 	return
 }
 
-// corpus is a shared sample text covering the URL forms the extractor recognizes:
-// scheme URLs (with user info, ports, queries, fragments), Unicode and punycode
-// domains, IPv4 and IPv6 hosts, emails, no-authority schemes, relative paths, and
-// scheme-less hosts.
-//
 //nolint:gosec // G101: the credentials in the corpus are fake, exercising user info matching.
 const corpus = `
 	http://localhost
@@ -100,7 +95,6 @@ const corpus = `
 	[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:8080
 `
 
-// wantWithScheme lists the corpus matches expected when a scheme is required.
 var wantWithScheme = []string{
 	"http://localhost",
 	"http://localhost:8000/home",
@@ -141,8 +135,6 @@ var wantWithScheme = []string{
 	"https://www.example.com",
 }
 
-// wantWithSchemePattern lists the corpus matches expected when the scheme is restricted
-// to http and https.
 var wantWithSchemePattern = []string{
 	"http://localhost",
 	"http://localhost:8000/home",
@@ -171,8 +163,6 @@ var wantWithSchemePattern = []string{
 	"https://www.example.com",
 }
 
-// wantWithHost lists the corpus matches expected when a host is required: everything
-// from wantWithScheme, plus scheme-less host URLs and emails.
 var wantWithHost = []string{
 	"http://localhost",
 	"http://localhost:8000/home",
@@ -220,8 +210,6 @@ var wantWithHost = []string{
 	"[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:8080",
 }
 
-// wantWithHostPattern lists the corpus matches expected when the host is restricted to
-// example.com and its subdomains.
 var wantWithHostPattern = []string{
 	"https://www.example.com",
 	"http://www.example.com:8080/page",
@@ -645,7 +633,6 @@ func Test_Extractor_New_IgnoresNilOptions(t *testing.T) {
 	require.NotNil(t, e)
 }
 
-// ExampleExtractor_Extract demonstrates the one-call extraction entry point.
 func ExampleExtractor_Extract() {
 	e, err := hqgourlextractor.New()
 	if err != nil {

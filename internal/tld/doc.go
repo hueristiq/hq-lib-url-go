@@ -4,5 +4,9 @@
 //
 // # Entry points
 //
-// [Official], [Pseudo]
+//   - [Official] is the generated table of public top-level domains and
+//     effective TLDs, refreshed from the IANA and Public Suffix List sources
+//     by cmd/tldsgen.
+//   - [Pseudo] is a hand-maintained table of widely used unofficial or
+//     pseudo-TLDs (special-use and decentralized names).
 package tld

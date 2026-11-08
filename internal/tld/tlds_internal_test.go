@@ -11,10 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// validTLD is the structural shape every generated entry must satisfy:
-// no whitespace, no leading or trailing dot, no empty labels, and ASCII
-// letters lowercase. Unicode (U-label) entries such as "andøy.no" are
-// permitted.
 var validTLD = regexp.MustCompile(`^\S+$`)
 
 func assertValidEntry(t *testing.T, entry string) {

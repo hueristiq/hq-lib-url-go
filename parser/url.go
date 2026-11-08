@@ -24,17 +24,17 @@ type URL struct {
 
 // NormalizeOptions controls the optional behavior of [URL.NormalizeWith]. The
 // zero value matches [URL.Normalize].
+//
+// Fields:
+//   - DropFragment (bool): removes the fragment from the URL.
+//   - KeepQueryOrder (bool): preserves the original query parameter order. By
+//     default the query is sorted by key when it parses cleanly.
+//   - KeepDotSegments (bool): leaves "." and ".." path segments untouched and
+//     preserves RawPath, so an encoded "%2E%2E" never collapses into a
+//     parent-directory segment. By default dot segments are removed.
 type NormalizeOptions struct {
-	// DropFragment removes the fragment from the URL.
-	DropFragment bool
-
-	// KeepQueryOrder preserves the original query parameter order. By default
-	// the query is sorted by key when it parses cleanly.
-	KeepQueryOrder bool
-
-	// KeepDotSegments leaves "." and ".." path segments untouched and
-	// preserves RawPath, so an encoded "%2E%2E" never collapses into a
-	// parent-directory segment. By default dot segments are removed.
+	DropFragment    bool
+	KeepQueryOrder  bool
 	KeepDotSegments bool
 }
 

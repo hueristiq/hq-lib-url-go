@@ -6,16 +6,11 @@ import (
 	hqgourlparser "github.com/hueristiq/hq-lib-url-go/parser"
 )
 
-// parseURLSink and errParseSink keep benchmark results alive so the compiler cannot
-// optimize the measured calls away.
 var (
 	parseURLSink *hqgourlparser.URL
 	errParseSink error
 )
 
-// Benchmark_Parser_Parse measures the full parse path — scheme application, net/url
-// parsing, and TLD decomposition — on a URL exercising every component: user info, a
-// subdomain, a multi-label TLD, a port, a query, and a fragment.
 func Benchmark_Parser_Parse(b *testing.B) {
 	p := hqgourlparser.New()
 
@@ -34,8 +29,6 @@ func Benchmark_Parser_Parse(b *testing.B) {
 	errParseSink = err
 }
 
-// Benchmark_Parser_ParseSingleLabelHost measures the parse path for a single-label host
-// ("localhost"), which skips TLD lookup entirely.
 func Benchmark_Parser_ParseSingleLabelHost(b *testing.B) {
 	p := hqgourlparser.New()
 

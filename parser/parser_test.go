@@ -833,7 +833,6 @@ func Test_Parser_New_IgnoresNilOptions(t *testing.T) {
 	require.NotNil(t, p)
 }
 
-// ExampleParse demonstrates parsing a URL and reading its decomposed domain.
 func ExampleParse() {
 	p := hqgourlparser.New(hqgourlparser.WithDefaultScheme("https"))
 
@@ -855,8 +854,6 @@ func ExampleParse() {
 	// sh
 }
 
-// FuzzParse exercises Parse over arbitrary inputs: no input may panic, and a
-// rejected URL must return an error rather than a partial result.
 func FuzzParse(f *testing.F) {
 	f.Add("https://example.com/path")
 	f.Add("example.com")

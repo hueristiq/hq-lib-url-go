@@ -23,6 +23,9 @@ import (
 //   - withHostPattern (string): a custom regular expression pattern to match URL hosts.
 //   - withoutEmail (bool): whether bare email addresses are excluded from extraction.
 //   - withoutUserInfo (bool): whether user info in the authority is excluded from extraction.
+//   - custom (*regexp.Regexp): a caller-supplied pattern installed by [WithRegexp];
+//     when set, it replaces the composed pattern and cannot be combined with the
+//     other options.
 //   - regexp (*regexp.Regexp): the extraction pattern compiled by [New].
 type Extractor struct {
 	withScheme        bool

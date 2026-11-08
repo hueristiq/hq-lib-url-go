@@ -397,10 +397,28 @@ func isHostLabelCharacter(character byte) (ok bool) {
 	return
 }
 
-func isGlueDelimiter(character byte) bool {
+// isGlueDelimiter reports whether character can glue two URLs together in
+// source text.
+//
+// Parameters:
+//   - character (byte): the byte to inspect.
+//
+// Returns:
+//   - ok (bool): true for ",", ";", and "|".
+func isGlueDelimiter(character byte) (ok bool) {
 	return character == ',' || character == ';' || character == '|'
 }
 
+// gluedSchemeIndexes returns the offsets of the delimiters in match that are
+// directly followed by an "http://" or "https://" scheme — the points where a
+// new URL begins inside a glued row.
+//
+// Parameters:
+//   - match (string): the raw match to scan.
+//
+// Returns:
+//   - indexes ([]int): the delimiter offsets, in ascending order; nil when the
+//     match holds a single URL.
 func gluedSchemeIndexes(match string) (indexes []int) {
 	for i := 0; i < len(match); i++ {
 		if !isGlueDelimiter(match[i]) {
@@ -425,6 +443,16 @@ func gluedSchemeIndexes(match string) (indexes []int) {
 	return indexes
 }
 
+// gluedStatusIndex returns the offset of the last delimiter in match that is
+// followed by a three-digit HTTP status code (and another delimiter or the end
+// of the match) — the point where an access-log row stops being a URL.
+//
+// Parameters:
+//   - match (string): the raw match to scan.
+//
+// Returns:
+//   - index (int): the delimiter offset, or -1 when no status column is glued
+//     on.
 func gluedStatusIndex(match string) (index int) {
 	index = -1
 
@@ -455,6 +483,16 @@ func gluedStatusIndex(match string) (index int) {
 	return index
 }
 
+// gluedMethodIndex returns the offset of the last delimiter in match that is
+// followed by what looks like an HTTP method — two to eight uppercase letters —
+// the point where an access-log row stops being a URL.
+//
+// Parameters:
+//   - match (string): the raw match to scan.
+//
+// Returns:
+//   - index (int): the delimiter offset, or -1 when no method column is glued
+//     on.
 func gluedMethodIndex(match string) (index int) {
 	index = strings.LastIndexAny(match, ",;|")
 	if index < 0 {

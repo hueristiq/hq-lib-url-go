@@ -9,9 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestRangesCompileAsCharacterClasses verifies the generated constants can be
-// embedded in a regex character class — the exact way the extractor package
-// consumes them.
 func TestRangesCompileAsCharacterClasses(t *testing.T) {
 	t.Parallel()
 
@@ -27,8 +24,6 @@ func TestRangesCompileAsCharacterClasses(t *testing.T) {
 	require.NoError(t, err, "AllowedUcsCharMinusPunc must compile as a character class")
 }
 
-// TestRangesAreAscending verifies that every start-end pair is ordered and
-// that pairs do not overlap, so the sets stay disjoint across regeneration.
 func TestRangesAreAscending(t *testing.T) {
 	t.Parallel()
 

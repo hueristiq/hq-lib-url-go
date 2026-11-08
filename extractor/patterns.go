@@ -101,7 +101,7 @@ var (
 	// pattern. They are mutable variables only so they can be spliced into larger
 	// pattern strings; callers must not modify them.
 
-	// SchemePattern defines a general pattern for matching URL hqgourlscheme.
+	// SchemePattern defines a general pattern for matching URL schemes.
 	// It matches any URL scheme that starts with an alphabetical character (a-z, A-Z), followed by
 	// any combination of letters, digits, dots (.), hyphens (-), or plus signs (+), and ends with "://".
 	// Additionally, it matches schemes from a predefined list that do not require an authority (host),
@@ -112,7 +112,7 @@ var (
 	SchemePattern = `(?:[a-zA-Z][a-zA-Z0-9.\-+]*://|(?:(?i)` + anyOf(hqgourlscheme.NoAuthority...) + `:))`
 
 	// KnownOfficialSchemePattern defines a pattern for matching officially recognized
-	// URL hqgourlscheme. These include well-known schemes such as "http", "https", "ftp", etc., as registered
+	// URL schemes. These include well-known schemes such as "http", "https", "ftp", etc., as registered
 	// with IANA. The pattern ensures that the scheme is followed by "://".
 	//
 	// This pattern ensures that only officially recognized schemes are matched. Matching is
@@ -120,11 +120,11 @@ var (
 	KnownOfficialSchemePattern = `(?:(?i)` + anyOf(hqgourlscheme.Official...) + `://)`
 
 	// KnownUnofficialSchemePattern defines a pattern for matching unofficial or less commonly
-	// used URL hqgourlscheme. These schemes may not be registered with IANA but are still valid in specific contexts,
+	// used URL schemes. These schemes may not be registered with IANA but are still valid in specific contexts,
 	// such as application-specific schemes (e.g., "slack://", "zoommtg://").
 	// The pattern ensures that the scheme is followed by "://".
 	//
-	// This pattern is useful for applications that work with unofficial or niche hqgourlscheme.
+	// This pattern is useful for applications that work with unofficial or niche schemes.
 	// Matching is case-insensitive, as required by [RFC 3986](https://www.rfc-editor.org/info/rfc3986/).
 	KnownUnofficialSchemePattern = `(?:(?i)` + anyOf(hqgourlscheme.Unofficial...) + `://)`
 

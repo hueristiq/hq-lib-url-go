@@ -5,6 +5,11 @@ import "strings"
 // QueryPair is one raw key=value pair from a URL query string. Keys and values
 // keep their original percent-encoding and ordering; unlike [url.Values], the
 // representation is lossless for duplicate keys and repeated values.
+//
+// Fields:
+//   - Key (string): the raw parameter name, percent-encoding preserved.
+//   - Value (string): the raw parameter value, percent-encoding preserved;
+//     empty when the pair carries no "=".
 type QueryPair struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
