@@ -94,6 +94,13 @@ lefthook-initialize:
 	fi
 	@$(call log_success,Initializing lefthook...done!)
 
+.PHONY: generate
+
+generate:
+	@$(call log_header,Generating data tables...)
+	@sh ./scripts/generate.sh || ( $(call log_error,Failed Generating data tables!) && exit 1 )
+	@$(call log_success,Generating data tables...done!)
+
 .PHONY: go-mod-clean go-mod-tidy go-mod-update go-fmt-check go-fmt go-lint go-test
 
 go-mod-clean:
@@ -146,6 +153,9 @@ help:
 	@echo ""
 	@echo " $(COLOR_BOLD)$(COLOR_CYAN)...lefthook:$(COLOR_RESET)"
 	@echo "   $(COLOR_GREEN)lefthook-initialize$(COLOR_RESET) ......... Initialize lefthook git hooks."
+	@echo ""
+	@echo " $(COLOR_BOLD)$(COLOR_CYAN)...generate:$(COLOR_RESET)"
+	@echo "   $(COLOR_GREEN)generate$(COLOR_RESET) ..................... Regenerate data tables."
 	@echo ""
 	@echo " $(COLOR_BOLD)$(COLOR_CYAN)...go:$(COLOR_RESET)"
 	@echo "   $(COLOR_GREEN)go-mod-clean$(COLOR_RESET) ................ Clean Go module cache."
