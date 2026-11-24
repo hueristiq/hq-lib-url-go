@@ -1,55 +1,46 @@
 package extractor
 
 import (
-	"errors"
-	"fmt"
 	"regexp"
 
+	hqgoerrors "github.com/hueristiq/hq-lib-errors-go"
 	hqgourlscheme "github.com/hueristiq/hq-lib-url-go/internal/scheme"
 )
 
-// Extractor configures the URL extraction process.
-// It provides options for controlling whether URL schemes and hosts are mandatory, and allows custom
-// regular expression patterns to be specified for these components. This allows fine-grained control over
-// the types of URLs that are extracted from text.
-//
-// Construct through [New]; an Extractor is immutable after construction and
-// must not be copied after first use.
-//
-// Fields:
-//   - withScheme (bool): whether a URL scheme (e.g., "http") is required in extracted URLs.
-//   - withSchemePattern (string): a custom regular expression pattern to match URL schemes.
-//   - withHost (bool): whether a URL host (e.g., domain) is required in extracted URLs.
-//   - withHostPattern (string): a custom regular expression pattern to match URL hosts.
-//   - withoutEmail (bool): whether bare email addresses are excluded from extraction.
-//   - withoutUserInfo (bool): whether user info in the authority is excluded from extraction.
-//   - custom (*regexp.Regexp): a caller-supplied pattern installed by [WithRegexp];
-//     when set, it replaces the composed pattern and cannot be combined with the
-//     other options.
-//   - regexp (*regexp.Regexp): the extraction pattern compiled by [New].
+// Extractor finds URLs in text with the pattern compiled by [New]. It is
+// immutable after construction and safe for concurrent use. Construct through
+// [New]; the zero value is not usable.
 type Extractor struct {
-	withScheme        bool
-	withSchemePattern string
-	withHost          bool
-	withHostPattern   string
-	withoutEmail      bool
-	withoutUserInfo   bool
-	custom            *regexp.Regexp
-	regexp            *regexp.Regexp
+	regexp *regexp.Regexp
 }
 
-// compileRegex constructs and compiles a regular expression pattern for URL extraction.
-// It builds a composite regex pattern that can capture various URL forms, taking into account user
-// configuration for required schemes or hosts, as well as any custom patterns provided.
-// The generated pattern can match fully-qualified URLs (with schemes and hosts), email addresses,
-// and relative URLs, depending on the configuration.
-//
-// Returns:
-//   - regex (*regexp.Regexp): a compiled regular expression object, tuned to find the
-//     longest match at each position, that can be used to extract URLs from text.
-//   - err (error): a wrapped error when the composed pattern fails to compile, e.g. when a
-//     custom scheme or host pattern is invalid.
-func (e *Extractor) compileRegex() (regex *regexp.Regexp, err error) {
+// Options configures an [Extractor]. The zero value extracts every supported
+// URL form (scheme URLs, host-like URLs, emails, and relative URLs).
+type Options struct {
+	// RequireScheme requires extracted URLs to carry a scheme (e.g., "http").
+	RequireScheme bool
+	// SchemePattern is a custom regular expression for the scheme; it implies
+	// RequireScheme and replaces both built-in scheme patterns.
+	SchemePattern string
+	// RequireHost requires extracted URLs to carry a host.
+	RequireHost bool
+	// HostPattern is a custom regular expression for the host; it implies
+	// RequireHost and requires every match to carry the host.
+	HostPattern string
+	// WithoutEmail excludes bare email addresses from extraction.
+	WithoutEmail bool
+	// WithoutUserInfo excludes user info from the authority component.
+	WithoutUserInfo bool
+	// Regexp replaces the composed pattern with a caller-supplied one. It
+	// cannot be combined with the other fields.
+	Regexp *regexp.Regexp
+}
+
+// compileRegex constructs and compiles the extraction pattern from options.
+// The pattern can match fully-qualified URLs (with schemes and hosts), email
+// addresses, and relative URLs, depending on the configuration. It is tuned
+// to find the longest match at each position.
+func compileRegex(options Options) (regex *regexp.Regexp, err error) {
 	knownTLDPattern := knownTLDPatternOnce()
 
 	// domainPattern matches typical domains by combining subdomains, known TLDs, or 'localhost'.
@@ -63,14 +54,14 @@ func (e *Extractor) compileRegex() (regex *regexp.Regexp, err error) {
 
 	// If a custom host pattern was provided, use it. Group it so a top-level
 	// alternation cannot change the precedence of the surrounding pattern.
-	if e.withHost && e.withHostPattern != "" {
-		hostWithPortOptionalPattern = `(?:` + e.withHostPattern + `)`
+	if options.RequireHost && options.HostPattern != "" {
+		hostWithPortOptionalPattern = `(?:` + options.HostPattern + `)`
 	}
 
 	// authorityPattern: user info + host:port.
 	userInfoPattern := iUserInfoOptionalPattern
 
-	if e.withoutUserInfo {
+	if options.WithoutUserInfo {
 		userInfoPattern = ""
 	}
 
@@ -93,8 +84,8 @@ func (e *Extractor) compileRegex() (regex *regexp.Regexp, err error) {
 	authoritySchemePattern := `[a-zA-Z][a-zA-Z0-9.\-+]*://`
 	noAuthoritySchemePattern := `(?:(?i)` + anyOf(hqgourlscheme.NoAuthority...) + `:)`
 
-	if e.withScheme && e.withSchemePattern != "" {
-		authoritySchemePattern = `(?:` + e.withSchemePattern + `)`
+	if options.RequireScheme && options.SchemePattern != "" {
+		authoritySchemePattern = `(?:` + options.SchemePattern + `)`
 		noAuthoritySchemePattern = ""
 	}
 
@@ -113,7 +104,7 @@ func (e *Extractor) compileRegex() (regex *regexp.Regexp, err error) {
 	authoritySchemeAuthorityPattern := authorityOptionalPattern
 	authoritySchemePathPattern := pathContPattern
 
-	if e.withoutUserInfo {
+	if options.WithoutUserInfo {
 		authoritySchemeAuthorityPattern = authorityPattern
 		authoritySchemePathPattern = `(?:/` + pathContPattern + `|/)?`
 	}
@@ -126,7 +117,7 @@ func (e *Extractor) compileRegex() (regex *regexp.Regexp, err error) {
 
 	// If a custom host pattern is provided, everything must carry the host:
 	// scheme URLs and no-authority scheme matches alike.
-	if e.withHostPattern != "" {
+	if options.HostPattern != "" {
 		urlsWithSchemePattern = schemePattern + authorityPattern + `(?:/` + pathContPattern + `|/)?`
 	}
 
@@ -134,7 +125,7 @@ func (e *Extractor) compileRegex() (regex *regexp.Regexp, err error) {
 	// without a specific scheme.
 	urlsWithHostPattern := webURLPattern
 
-	if !e.withoutEmail {
+	if !options.WithoutEmail {
 		urlsWithHostPattern += `|` + emailPattern
 	}
 
@@ -146,9 +137,9 @@ func (e *Extractor) compileRegex() (regex *regexp.Regexp, err error) {
 	var pattern string
 
 	switch {
-	case e.withScheme:
+	case options.RequireScheme:
 		pattern = urlsWithSchemePattern
-	case e.withHost:
+	case options.RequireHost:
 		pattern = urlsWithSchemePattern + `|` + urlsWithHostPattern
 	default:
 		pattern = urlsWithSchemePattern + `|` + urlsWithHostPattern + `|` + relativeURLsPattern
@@ -157,7 +148,7 @@ func (e *Extractor) compileRegex() (regex *regexp.Regexp, err error) {
 	// Compiling the final regex pattern.
 	regex, err = regexp.Compile(pattern)
 	if err != nil {
-		return nil, fmt.Errorf("extractor.compileRegex: %w", err)
+		return nil, hqgoerrors.Stack(err)
 	}
 
 	// Ensures the longest possible match is found.
@@ -168,13 +159,6 @@ func (e *Extractor) compileRegex() (regex *regexp.Regexp, err error) {
 
 // Extract finds every URL in text using the pattern compiled by [New],
 // returning the matches in the order they appear.
-//
-// Parameters:
-//   - text (string): the text to search.
-//
-// Returns:
-//   - matches ([]string): the URLs found, in order of appearance; empty when
-//     none match.
 func (e *Extractor) Extract(text string) (matches []string) {
 	return e.regexp.FindAllString(text, -1)
 }
@@ -182,150 +166,105 @@ func (e *Extractor) Extract(text string) (matches []string) {
 // Regexp returns the compiled extraction pattern for callers that need match
 // indexes rather than the strings returned by [Extractor.Extract]. The pattern
 // is shared and safe for concurrent matching; callers must not reconfigure it.
-//
-// Returns:
-//   - regex (*regexp.Regexp): the pattern compiled by [New].
 func (e *Extractor) Regexp() (regex *regexp.Regexp) {
 	return e.regexp
 }
 
-// OptionFunc defines a functional option for configuring an Extractor instance.
-// It allows the caller to pass in configuration functions that modify the Extractor's
-// settings (e.g., requiring a scheme or host, or providing custom regex patterns).
-// A nil OptionFunc is ignored. The With* and Without* helpers cover common settings,
-// and callers may write custom options because [Extractor] is exported.
-//
-// Parameters:
-//   - extractor (*Extractor): the Extractor instance to configure.
-type OptionFunc func(extractor *Extractor)
+// OptionFunc configures an [Options] value. A nil OptionFunc is ignored. The
+// With* and Without* helpers cover every setting, and callers may write
+// custom options because [Options] is exported.
+type OptionFunc func(*Options)
 
-// New creates a new Extractor instance with optional configuration.
-// The options can be used to customize the behavior of the Extractor, such as requiring URL schemes
-// or hosts, and specifying custom regex patterns for these components.
-//
-// Parameters:
-//   - ofs (...OptionFunc): a variadic list of OptionFunc functions that modify the Extractor's settings.
-//
-// Returns:
-//   - extractor (*Extractor): the configured Extractor with its compiled pattern.
-//   - err (error): non-nil when a pattern is invalid or options conflict.
+// New creates an Extractor with the pattern described by the options. It
+// fails when a pattern is invalid or [WithRegexp] is combined with other
+// options.
 func New(ofs ...OptionFunc) (extractor *Extractor, err error) {
-	extractor = &Extractor{}
+	options := Options{}
 
 	for _, f := range ofs {
 		if f != nil {
-			f(extractor)
+			f(&options)
 		}
 	}
 
-	if extractor.custom != nil {
-		if extractor.withScheme || extractor.withHost || extractor.withoutEmail || extractor.withoutUserInfo {
-			return nil, errors.New("extractor.New: WithRegexp cannot be combined with other extraction options")
+	if options.Regexp != nil {
+		if options.RequireScheme || options.RequireHost || options.WithoutEmail || options.WithoutUserInfo {
+			return nil, hqgoerrors.New("WithRegexp cannot be combined with other extraction options")
 		}
 
-		extractor.regexp = extractor.custom
-
-		return extractor, nil
+		return &Extractor{regexp: options.Regexp}, nil
 	}
 
-	extractor.regexp, err = extractor.compileRegex()
+	compiled, err := compileRegex(options)
 	if err != nil {
-		return nil, fmt.Errorf("extractor.New: %w", err)
+		return nil, hqgoerrors.Stack(err)
 	}
 
-	return extractor, nil
+	return &Extractor{regexp: compiled}, nil
 }
 
 // WithRegexp returns an OptionFunc that uses re as the extraction pattern
 // instead of building one from the other options. This is useful when the
 // caller already has a domain-specific or otherwise custom pattern. The
 // pattern is used as given; pair it with [Extractor.ExtractURLs] to keep the
-// boundary and glue cleanup behavior.
-//
-// Parameters:
-//   - re (*regexp.Regexp): the compiled extraction pattern. A nil value is
-//     ignored.
-//
-// Returns:
-//   - f (OptionFunc): a function that sets the custom pattern.
+// boundary and glue cleanup behavior. A nil value is ignored.
 func WithRegexp(re *regexp.Regexp) (f OptionFunc) {
-	return func(extractor *Extractor) {
+	return func(o *Options) {
 		if re != nil {
-			extractor.custom = re
+			o.Regexp = re
 		}
 	}
 }
 
-// WithScheme returns an OptionFunc function that configures the Extractor to require URL schemes in the extraction process.
-//
-// Returns:
-//   - f (OptionFunc): a function that sets the withScheme flag to true.
+// WithScheme returns an OptionFunc that requires extracted URLs to carry a
+// scheme.
 func WithScheme() (f OptionFunc) {
-	return func(extractor *Extractor) {
-		extractor.withScheme = true
+	return func(o *Options) {
+		o.RequireScheme = true
 	}
 }
 
-// WithSchemePattern returns an OptionFunc function that sets a custom regex pattern for matching URL schemes.
-//
-// Parameters:
-//   - pattern (string): a regex pattern to match URL schemes.
-//
-// Returns:
-//   - f (OptionFunc): a function that sets the custom scheme pattern and enables the withScheme flag.
+// WithSchemePattern returns an OptionFunc that requires extracted URLs to
+// carry a scheme matching pattern.
 func WithSchemePattern(pattern string) (f OptionFunc) {
-	return func(extractor *Extractor) {
-		extractor.withScheme = true
-		extractor.withSchemePattern = pattern
+	return func(o *Options) {
+		o.RequireScheme = true
+		o.SchemePattern = pattern
 	}
 }
 
-// WithHost returns an OptionFunc function that configures the Extractor to require URL hosts in the extraction process.
-//
-// Returns:
-//   - f (OptionFunc): a function that sets the withHost flag to true.
+// WithHost returns an OptionFunc that requires extracted URLs to carry a
+// host.
 func WithHost() (f OptionFunc) {
-	return func(extractor *Extractor) {
-		extractor.withHost = true
+	return func(o *Options) {
+		o.RequireHost = true
 	}
 }
 
-// WithHostPattern returns an OptionFunc function that sets a custom regex pattern for matching URL hosts.
-//
-// Parameters:
-//   - pattern (string): a regex pattern to match URL hosts.
-//
-// Returns:
-//   - f (OptionFunc): a function that sets the custom host pattern and enables the withHost flag.
+// WithHostPattern returns an OptionFunc that requires extracted URLs to
+// carry a host matching pattern.
 func WithHostPattern(pattern string) (f OptionFunc) {
-	return func(extractor *Extractor) {
-		extractor.withHost = true
-		extractor.withHostPattern = pattern
+	return func(o *Options) {
+		o.RequireHost = true
+		o.HostPattern = pattern
 	}
 }
 
-// WithoutEmail returns an OptionFunc function that configures the Extractor
-// to exclude the bare email address pattern from extraction. Email addresses
-// matched through the user info + host URL form are unaffected; combine with
-// WithoutUserInfo to exclude both.
-//
-// Returns:
-//   - f (OptionFunc): a function that marks the withoutEmail flag as true.
+// WithoutEmail returns an OptionFunc that excludes the bare email address
+// pattern from extraction. Email addresses matched through the user info +
+// host URL form are unaffected; combine with WithoutUserInfo to exclude both.
 func WithoutEmail() (f OptionFunc) {
-	return func(extractor *Extractor) {
-		extractor.withoutEmail = true
+	return func(o *Options) {
+		o.WithoutEmail = true
 	}
 }
 
-// WithoutUserInfo returns an OptionFunc function that configures the
-// Extractor to exclude user info from the authority component of extracted
-// URLs. URLs carrying user info degrade to their host (and path); bare email
-// addresses are unaffected, as they match through the email pattern.
-//
-// Returns:
-//   - f (OptionFunc): a function that marks the withoutUserInfo flag as true.
+// WithoutUserInfo returns an OptionFunc that excludes user info from the
+// authority component of extracted URLs. URLs carrying user info degrade to
+// their host (and path); bare email addresses are unaffected, as they match
+// through the email pattern.
 func WithoutUserInfo() (f OptionFunc) {
-	return func(extractor *Extractor) {
-		extractor.withoutUserInfo = true
+	return func(o *Options) {
+		o.WithoutUserInfo = true
 	}
 }

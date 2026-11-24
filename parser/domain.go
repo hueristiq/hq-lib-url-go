@@ -22,9 +22,6 @@ type Domain struct {
 //   - "www.example.com" when all components are provided.
 //   - "example.com" when the subdomain is empty.
 //   - "example" when only the SLD is provided.
-//
-// Returns:
-//   - domain (string): the reconstructed domain.
 func (d *Domain) String() (domain string) {
 	parts := make([]string, 0, 3)
 
@@ -48,9 +45,6 @@ func (d *Domain) String() (domain string) {
 // Apex returns the apex (registrable) domain: the second-level domain joined with the
 // public suffix (e.g. "example.com" for "www.example.com"). When one of the two
 // components is empty, Apex returns the other.
-//
-// Returns:
-//   - apex (string): the apex domain.
 func (d *Domain) Apex() (apex string) {
 	switch {
 	case d.SecondLevelDomain == "":

@@ -9,7 +9,6 @@ import (
 	"encoding/csv"
 	"errors"
 	"flag"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -18,6 +17,8 @@ import (
 	"strings"
 	"sync"
 	"text/template"
+
+	hqgoerrors "github.com/hueristiq/hq-lib-errors-go"
 )
 
 // schemesTemplate renders the generated schemes source file.
@@ -72,23 +73,16 @@ func main() {
 }
 
 // generate fetches the IANA scheme registry and writes the generated list to output.
-//
-// Parameters:
-//   - output (string): the path of the generated Go file.
-//
-// Returns:
-//   - err (error): non-nil when the registry cannot be fetched or the file cannot be
-//     written.
 func generate(output string) (err error) {
 	log.Printf("Generating %s...\n", output)
 
 	schemes, err := fetchSchemesList()
 	if err != nil {
-		return fmt.Errorf("failed to fetch schemes: %w", err)
+		return hqgoerrors.Wrap(err, "failed to fetch schemes")
 	}
 
 	if err = writeSchemesToFile(schemes, output); err != nil {
-		return fmt.Errorf("failed to write schemes to file: %w", err)
+		return hqgoerrors.Wrap(err, "failed to write schemes to file")
 	}
 
 	log.Println("Schemes file generated successfully.")
@@ -97,31 +91,27 @@ func generate(output string) (err error) {
 }
 
 // fetchSchemesList downloads the IANA scheme registry and returns its active schemes.
-//
-// Returns:
-//   - schemes ([]string): the sorted, de-duplicated active scheme names.
-//   - err (error): non-nil when the registry cannot be fetched or parsed.
 func fetchSchemesList() (schemes []string, err error) {
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, schemesCSVURL, http.NoBody)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build the schemes request: %w", err)
+		return nil, hqgoerrors.Wrap(err, "failed to build the schemes request")
 	}
 
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch the schemes CSV: %w", err)
+		return nil, hqgoerrors.Wrap(err, "failed to fetch the schemes CSV")
 	}
 
 	defer func() { _ = res.Body.Close() }()
 
 	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected HTTP status %s while fetching the schemes CSV", res.Status)
+		return nil, hqgoerrors.Errorf("unexpected HTTP status %s while fetching the schemes CSV", res.Status)
 	}
 
 	reader := csv.NewReader(res.Body)
 
 	if _, err = reader.Read(); err != nil {
-		return nil, fmt.Errorf("failed to read CSV header: %w", err)
+		return nil, hqgoerrors.Wrap(err, "failed to read CSV header")
 	}
 
 	for {
@@ -131,11 +121,11 @@ func fetchSchemesList() (schemes []string, err error) {
 		}
 
 		if readErr != nil {
-			return nil, fmt.Errorf("failed to read CSV row: %w", readErr)
+			return nil, hqgoerrors.Wrap(readErr, "failed to read CSV row")
 		}
 
 		if len(record) <= schemeStatusColumn {
-			return nil, fmt.Errorf("unexpected CSV row width %d", len(record))
+			return nil, hqgoerrors.Errorf("unexpected CSV row width %d", len(record))
 		}
 
 		// Obsolete entries are identified by the Status column (not the name column):
@@ -160,18 +150,10 @@ func fetchSchemesList() (schemes []string, err error) {
 }
 
 // writeSchemesToFile renders schemes and writes the result to output.
-//
-// Parameters:
-//   - schemes ([]string): the scheme names to emit.
-//   - output (string): the path of the generated Go file.
-//
-// Returns:
-//   - err (error): non-nil when the file cannot be created or the template cannot be
-//     executed.
 func writeSchemesToFile(schemes []string, output string) (err error) {
 	file, err := os.Create(output) //nolint:gosec // G304: output is a local CLI argument
 	if err != nil {
-		return fmt.Errorf("failed to create output file: %w", err)
+		return hqgoerrors.Wrap(err, "failed to create output file")
 	}
 
 	defer func() { _ = file.Close() }()
@@ -184,11 +166,11 @@ func writeSchemesToFile(schemes []string, output string) (err error) {
 
 	parsed, err := schemesTemplate()
 	if err != nil {
-		return fmt.Errorf("failed to parse template: %w", err)
+		return hqgoerrors.Wrap(err, "failed to parse template")
 	}
 
 	if err = parsed.Execute(file, data); err != nil {
-		return fmt.Errorf("failed to execute template: %w", err)
+		return hqgoerrors.Wrap(err, "failed to execute template")
 	}
 
 	return nil

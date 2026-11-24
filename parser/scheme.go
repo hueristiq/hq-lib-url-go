@@ -17,12 +17,6 @@ var defaultSchemePorts = map[string]string{
 
 // hasNumericPort reports whether segment looks like a "host:port" pair — that is, it
 // contains a ":" followed by a non-empty, all-digits port.
-//
-// Parameters:
-//   - segment (string): the first path segment of a scheme-less URL.
-//
-// Returns:
-//   - ok (bool): true when segment carries a numeric port.
 func hasNumericPort(segment string) (ok bool) {
 	_, port, found := strings.Cut(segment, ":")
 	if !found || port == "" {
@@ -43,12 +37,6 @@ func hasNumericPort(segment string) (ok bool) {
 // It returns "http" for local targets — "localhost" and any *.localhost, *.local,
 // *.test, or *.invalid name, as well as loopback, private, link-local, and unspecified
 // IP literals — and "https" for everything else. A port suffix on host is ignored.
-//
-// Parameters:
-//   - host (string): the host or hostname to infer a scheme for.
-//
-// Returns:
-//   - scheme (string): "http" or "https".
 func InferScheme(host string) (scheme string) {
 	hostname := host
 

@@ -18,11 +18,11 @@
 
 ## Features
 
-- **URL extraction:** longest-match patterns find fully qualified URLs, scheme-less hosts, email addresses, and relative paths, with functional options and exported pattern blocks.
-- **PSL-aware parsing:** `parser` decomposes hosts into subdomain, SLD, and TLD against the embedded Public Suffix List, including multi-label and private suffixes, with label-aware matching.
-- **Normalization:** lowercase scheme and host, default-port removal, dot-segment removal, and sorted query parameters through `URL.Normalize`.
-- **Scheme inference:** `InferScheme` chooses `http` for local targets and `https` for everything else.
-- **Typed URL values:** `parser.URL` embeds `net/url.URL` and exposes the decomposed `Domain`, while `Apex` returns the registrable domain.
+- **Extraction:** URL, scheme-less host, email, and relative-path patterns with functional options.
+- **PSL parsing:** subdomain, SLD, and TLD decomposition against the embedded Public Suffix List.
+- **Normalization:** lowercase scheme and host, default-port and dot-segment removal, and sorted query parameters.
+- **Scheme inference:** `InferScheme` chooses `http` for local targets and `https` otherwise.
+- **Values:** `parser.URL` embeds `net/url.URL` and `Apex` returns the registrable domain.
 
 ## Installation
 
@@ -178,6 +178,7 @@ func main() {
 
 	parsed.Normalize()
 
+	fmt.Println(parsed.Domain.Apex())
 	fmt.Println(parsed.String())
 	fmt.Println(hqgourlparser.InferScheme("localhost:8080"))
 	fmt.Println(hqgourlparser.InferScheme("example.com"))

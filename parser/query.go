@@ -19,12 +19,6 @@ type QueryPair struct {
 // original parameter order and duplicates. A pair without "=" is returned with
 // an empty Value. Empty segments (for example the empty string between two
 // "&&") are skipped.
-//
-// Parameters:
-//   - raw (string): the raw query string, without the leading "?".
-//
-// Returns:
-//   - pairs ([]QueryPair): the parsed pairs, in order of appearance.
 func ParseQueryPairs(raw string) (pairs []QueryPair) {
 	if raw == "" {
 		return nil

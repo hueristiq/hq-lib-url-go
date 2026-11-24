@@ -21,12 +21,6 @@ const maxUnicodeCodePoint = 0x10FFFF
 // DecodeJSEscapes is meant for scanning raw text (script sources, JSON bodies) so that
 // escaped URLs become matchable by regular expressions; it is not a complete
 // JavaScript string evaluator.
-//
-// Parameters:
-//   - in (string): the text to decode.
-//
-// Returns:
-//   - decoded (string): in with recognized escape sequences expanded.
 func DecodeJSEscapes(in string) (decoded string) {
 	var out strings.Builder
 
@@ -115,14 +109,6 @@ func DecodeJSEscapes(in string) (decoded string) {
 // decodeUnicodeEscape decodes the unicode escape starting at i (in[i] is the
 // backslash and in[i+1] the 'u') into out, and returns the index just past the
 // escape.
-//
-// Parameters:
-//   - out (*strings.Builder): the destination the decoded rune is written to.
-//   - in (string): the source text containing the escape.
-//   - i (int): the byte offset of the backslash.
-//
-// Returns:
-//   - next (int): the byte offset just past the decoded escape.
 func decodeUnicodeEscape(out *strings.Builder, in string, i int) (next int) {
 	// Braced code point escape: \u{...}
 	if i+2 < len(in) && in[i+2] == '{' {
@@ -174,12 +160,6 @@ func decodeUnicodeEscape(out *strings.Builder, in string, i int) (next int) {
 }
 
 // isSingleEscape reports whether b names a single-character escape.
-//
-// Parameters:
-//   - b (byte): the character following the backslash.
-//
-// Returns:
-//   - single (bool): true when b is one of \b \f \n \r \t \v \' \" \\.
 func isSingleEscape(b byte) (single bool) {
 	switch b {
 	case 'b', 'f', 'n', 'r', 't', 'v', '\'', '"', '\\':
@@ -190,13 +170,6 @@ func isSingleEscape(b byte) (single bool) {
 }
 
 // singleEscapeValue returns the byte represented by a single-character escape.
-//
-// Parameters:
-//   - b (byte): the character following the backslash; must satisfy
-//     [isSingleEscape].
-//
-// Returns:
-//   - value (byte): the decoded character.
 func singleEscapeValue(b byte) (value byte) {
 	switch b {
 	case 'b':
@@ -217,23 +190,11 @@ func singleEscapeValue(b byte) (value byte) {
 }
 
 // isHexQuad reports whether s holds exactly four hexadecimal digits.
-//
-// Parameters:
-//   - s (string): the string to inspect; it must have at least four bytes.
-//
-// Returns:
-//   - quad (bool): true when the first four bytes of s are hexadecimal digits.
 func isHexQuad(s string) (quad bool) {
 	return isHexDigit(s[0]) && isHexDigit(s[1]) && isHexDigit(s[2]) && isHexDigit(s[3])
 }
 
 // isHexDigit reports whether b is an ASCII hexadecimal digit.
-//
-// Parameters:
-//   - b (byte): the byte to test.
-//
-// Returns:
-//   - hex (bool): true for 0-9, a-f, and A-F.
 func isHexDigit(b byte) (hex bool) {
 	switch {
 	case b >= '0' && b <= '9', b >= 'a' && b <= 'f', b >= 'A' && b <= 'F':
@@ -244,23 +205,11 @@ func isHexDigit(b byte) (hex bool) {
 }
 
 // isOctalDigit reports whether b is an ASCII octal digit.
-//
-// Parameters:
-//   - b (byte): the byte to test.
-//
-// Returns:
-//   - octal (bool): true for 0-7.
 func isOctalDigit(b byte) (octal bool) {
 	return b >= '0' && b <= '7'
 }
 
 // hexDigitValue returns the numeric value of an ASCII hexadecimal digit.
-//
-// Parameters:
-//   - b (byte): the digit to convert; must satisfy [isHexDigit].
-//
-// Returns:
-//   - value (byte): the digit's value, 0 through 15.
 func hexDigitValue(b byte) (value byte) {
 	switch {
 	case b >= '0' && b <= '9':
@@ -273,13 +222,6 @@ func hexDigitValue(b byte) (value byte) {
 }
 
 // parseHex interprets a string of hexadecimal digits as a number.
-//
-// Parameters:
-//   - s (string): the hexadecimal digits; it must be non-empty and contain only
-//     digits accepted by [isHexDigit].
-//
-// Returns:
-//   - value (uint64): the numeric value of s.
 func parseHex(s string) (value uint64) {
 	for i := range s {
 		value = value<<4 | uint64(hexDigitValue(s[i]))
@@ -291,15 +233,6 @@ func parseHex(s string) (value uint64) {
 // parseHexWithin interprets a string of hexadecimal digits as a number and
 // reports whether the value stays within limit. It stops as soon as the value
 // would exceed limit, so arbitrarily long escapes cannot wrap around uint64.
-//
-// Parameters:
-//   - s (string): the hexadecimal digits; it must be non-empty and contain only
-//     digits accepted by [isHexDigit].
-//   - limit (uint64): the largest acceptable value.
-//
-// Returns:
-//   - value (uint64): the numeric value of s, or zero when it exceeds limit.
-//   - ok (bool): true when the value is at most limit.
 func parseHexWithin(s string, limit uint64) (value uint64, ok bool) {
 	for i := range s {
 		// Check before shifting: a value above limit>>4 would overflow past
@@ -319,13 +252,6 @@ func parseHexWithin(s string, limit uint64) (value uint64, ok bool) {
 }
 
 // octalValue interprets a string of octal digits as a number.
-//
-// Parameters:
-//   - s (string): the octal digits; it must contain only digits accepted by
-//     [isOctalDigit].
-//
-// Returns:
-//   - value (byte): the numeric value of s.
 func octalValue(s string) (value byte) {
 	for i := range s {
 		value = value<<3 | (s[i] - '0')

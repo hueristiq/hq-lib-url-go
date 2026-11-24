@@ -1,11 +1,11 @@
 package parser
 
 import (
-	"fmt"
 	"net"
 	"net/url"
 	"strings"
 
+	hqgoerrors "github.com/hueristiq/hq-lib-errors-go"
 	hqgourlpsl "github.com/hueristiq/hq-lib-url-go/internal/psl"
 )
 
@@ -13,6 +13,9 @@ import (
 // both the standard URL components and the decomposed domain details. It supports applying
 // a default scheme to URLs that lack one, and matches the host against the embedded
 // Public Suffix List.
+//
+// A Parser is immutable after construction and safe for concurrent use: the
+// zero value is usable and parses with the full embedded rule list.
 //
 // Fields:
 //   - scheme (string): the default scheme (e.g., "http", "https") applied when missing.
@@ -52,13 +55,6 @@ type Parser struct {
 //
 // Matching is case-insensitive: a trailing root dot is trimmed and the Domain components
 // are stored lowercase, regardless of the host's casing.
-//
-// Parameters:
-//   - raw (string): the raw URL string to parse.
-//
-// Returns:
-//   - parsed (*URL): the resulting URL with embedded net/url.URL and domain details.
-//   - err (error): an error if the URL cannot be parsed.
 func (p *Parser) Parse(raw string) (parsed *URL, err error) {
 	if p.scheme != "" {
 		raw = p.addScheme(raw)
@@ -72,7 +68,7 @@ func (p *Parser) Parse(raw string) (parsed *URL, err error) {
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("parser.Parse: %w", err)
+		return nil, hqgoerrors.Stack(err)
 	}
 
 	return &URL{
@@ -87,12 +83,6 @@ func (p *Parser) Parse(raw string) (parsed *URL, err error) {
 // opaque one such as "mailto:user@example.com" — so such input is returned unchanged.
 // The exception is a scheme-less "host:port" input (digits after the colon), which is
 // a host and gets the default scheme.
-//
-// Parameters:
-//   - raw (string): the input URL string which may be missing a scheme.
-//
-// Returns:
-//   - absolute (string): the URL string with the scheme added if necessary.
 func (p *Parser) addScheme(raw string) (absolute string) {
 	switch {
 	case strings.HasPrefix(raw, "//"):
@@ -114,12 +104,6 @@ func (p *Parser) addScheme(raw string) (absolute string) {
 
 // parseDomain decomposes a hostname into a Domain following the rules documented on
 // [Parser.Parse]. The hostname is expected without a port; IP literals yield nil.
-//
-// Parameters:
-//   - hostname (string): the host to decompose, without a port.
-//
-// Returns:
-//   - domain (*Domain): the decomposed domain, or nil for IP literal hosts.
 func (p *Parser) parseDomain(hostname string) (domain *Domain) {
 	if hostname == "" {
 		return &Domain{}
@@ -184,21 +168,12 @@ type Options struct {
 // once, the last one wins. A nil OptionFunc is ignored. The With* helpers
 // cover common settings, and callers may write custom options because
 // [Options] is exported.
-//
-// Parameters:
-//   - opts (*Options): the Options instance to configure.
 type OptionFunc func(opts *Options)
 
 // New creates and initializes a new Parser instance with default settings: no default
 // scheme, and the full embedded Public Suffix List (ICANN and private sections) as the
 // rule set. [WithIgnorePrivate] restricts it to the ICANN section. Additional
 // configurations can be applied via the provided OptionFunc functions.
-//
-// Parameters:
-//   - ofs (...OptionFunc): a variadic list of OptionFunc functions to configure the Parser.
-//
-// Returns:
-//   - parser (*Parser): the newly created Parser instance.
 func New(ofs ...OptionFunc) (parser *Parser) {
 	opts := &Options{}
 
@@ -225,12 +200,6 @@ func New(ofs ...OptionFunc) (parser *Parser) {
 // This option ensures that URLs missing a scheme are treated as absolute URLs with the
 // specified scheme. [InferScheme] can pick a per-host scheme when a fixed one is not
 // appropriate.
-//
-// Parameters:
-//   - scheme (string): the default scheme to set (e.g., "http", "https").
-//
-// Returns:
-//   - f (OptionFunc): an OptionFunc function that applies the default scheme.
 func WithDefaultScheme(scheme string) (f OptionFunc) {
 	return func(opts *Options) {
 		opts.DefaultScheme = scheme
@@ -245,9 +214,6 @@ func WithDefaultScheme(scheme string) (f OptionFunc) {
 // [Domain.TopLevelDomain].
 //
 // The default parser includes private suffixes.
-//
-// Returns:
-//   - f (OptionFunc): an OptionFunc function that applies the ICANN-only list.
 func WithIgnorePrivate() (f OptionFunc) {
 	return func(opts *Options) {
 		opts.IgnorePrivate = true
@@ -261,9 +227,6 @@ func WithIgnorePrivate() (f OptionFunc) {
 // It only repairs percent escapes. It does not relax host validation or accept
 // invalid authority characters, so a URL such as "http://exa mple.com" still
 // fails. Strict parsing is the default.
-//
-// Returns:
-//   - f (OptionFunc): an OptionFunc function that enables lenient parsing.
 func WithLenient() (f OptionFunc) {
 	return func(opts *Options) {
 		opts.Lenient = true

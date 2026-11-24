@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	hqgoerrors "github.com/hueristiq/hq-lib-errors-go"
 	hqgourlextractor "github.com/hueristiq/hq-lib-url-go/extractor"
 )
 
@@ -499,7 +500,7 @@ func TestNew_InvalidConfiguration(t *testing.T) {
 
 			require.Error(t, err)
 			assert.Nil(t, extractor)
-			assert.ErrorContains(t, err, "extractor.New")
+			assert.Contains(t, (hqgoerrors.FormatOptions{Trace: true}).String(err), "extractor.New")
 		})
 	}
 }

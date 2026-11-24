@@ -7,12 +7,6 @@ import "strings"
 // untouched. A dot deliberately stays encoded, as do reserved escapes such as
 // "%2F", so the result never gains a new path separator or parent-directory
 // segment.
-//
-// Parameters:
-//   - raw (string): the URL or path to decode.
-//
-// Returns:
-//   - decoded (string): the input with unreserved escapes decoded.
 func DecodeUnreservedEscapes(raw string) (decoded string) {
 	if !strings.Contains(raw, "%") {
 		return raw
@@ -50,12 +44,6 @@ func DecodeUnreservedEscapes(raw string) (decoded string) {
 // isUnreserved reports whether a byte may be decoded from a percent escape.
 // It follows the [RFC 3986](https://www.rfc-editor.org/info/rfc3986/) unreserved set except for ".", which stays encoded so
 // a "%2E%2E" sequence can never become a parent-directory segment.
-//
-// Parameters:
-//   - b (byte): the byte to inspect.
-//
-// Returns:
-//   - unreserved (bool): true for ALPHA, DIGIT, "-", "_", or "~".
 func isUnreserved(b byte) (unreserved bool) {
 	switch {
 	case b >= 'A' && b <= 'Z', b >= 'a' && b <= 'z', b >= '0' && b <= '9':
@@ -69,12 +57,6 @@ func isUnreserved(b byte) (unreserved bool) {
 
 // hexValue converts one ASCII hexadecimal digit to its numeric value. The
 // caller must have validated the digit with [isHexDigit].
-//
-// Parameters:
-//   - b (byte): the hexadecimal digit.
-//
-// Returns:
-//   - value (byte): the numeric value, 0 through 15.
 func hexValue(b byte) (value byte) {
 	switch {
 	case b >= '0' && b <= '9':

@@ -56,9 +56,6 @@ func (u *URL) Normalize() {
 
 // NormalizeWith is [URL.Normalize] with optional fragment removal and query-order
 // preservation. The zero options value matches [URL.Normalize].
-//
-// Parameters:
-//   - opts (NormalizeOptions): the optional canonicalization behavior.
 func (u *URL) NormalizeWith(opts NormalizeOptions) {
 	if u == nil || u.URL == nil {
 		return
@@ -107,13 +104,6 @@ func (u *URL) NormalizeWith(opts NormalizeOptions) {
 // [net/url.URL.Hostname] and [net/url.URL.Port], it is bracket-aware but agnostic to the
 // port's validity, so malformed ports are preserved verbatim instead of being absorbed
 // into the host. A bare host with more than one colon is treated as an IPv6 literal.
-//
-// Parameters:
-//   - hostport (string): the authority to split, as found in [net/url.URL.Host].
-//
-// Returns:
-//   - host (string): the host, without brackets for IPv6 literals.
-//   - port (string): the port, without the colon, or "" when absent.
 func splitHostPort(hostport string) (host, port string) {
 	if strings.HasPrefix(hostport, "[") {
 		if i := strings.LastIndex(hostport, "]"); i >= 0 {
@@ -138,12 +128,6 @@ func splitHostPort(hostport string) (host, port string) {
 
 // removeDotSegments applies the dot-segment removal algorithm of [RFC 3986](https://www.rfc-editor.org/info/rfc3986/) §5.2.4 to a
 // URL path, resolving "." and ".." segments without touching trailing slashes.
-//
-// Parameters:
-//   - path (string): the path to clean.
-//
-// Returns:
-//   - cleaned (string): the path with dot segments removed.
 func removeDotSegments(path string) (cleaned string) {
 	if path == "" {
 		return ""

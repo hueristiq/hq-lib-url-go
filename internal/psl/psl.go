@@ -51,9 +51,6 @@ var (
 // DefaultList returns the full embedded Public Suffix List generated from
 // publicsuffix.org, including both the ICANN and private sections. The
 // returned list is immutable and safe for concurrent use.
-//
-// Returns:
-//   - list (*List): the full embedded list.
 func DefaultList() (list *List) {
 	return defaultList
 }
@@ -62,22 +59,11 @@ func DefaultList() (list *List) {
 // section, excluding private-domain suffixes such as "blogspot.com" and
 // "s3.amazonaws.com". The returned list is immutable and safe for concurrent
 // use.
-//
-// Returns:
-//   - list (*List): the ICANN-only list.
 func ICANNList() (list *List) {
 	return icannList
 }
 
 // newList builds a lookup table from a set of rules.
-//
-// Parameters:
-//   - rules ([]Rule): the rules to index.
-//   - defaultRule (*Rule): the implicit rule to use when no explicit rule matches.
-//   - includePrivate (bool): whether private-section rules are indexed.
-//
-// Returns:
-//   - list (*List): the indexed rule set.
 func newList(rules []Rule, defaultRule *Rule, includePrivate bool) (list *List) {
 	list = &List{
 		rules:       make(map[string]*Rule, len(rules)),
@@ -99,12 +85,6 @@ func newList(rules []Rule, defaultRule *Rule, includePrivate bool) (list *List) 
 
 // Find returns the most specific rule matching host, or the list's default rule when
 // no explicit rule matches.
-//
-// Parameters:
-//   - host (string): the lowercase hostname to look up.
-//
-// Returns:
-//   - rule (*Rule): the matching rule, or nil when the list has no default rule.
 func (l *List) Find(host string) (rule *Rule) {
 	if l == nil {
 		return nil
@@ -128,9 +108,6 @@ func (l *List) Find(host string) (rule *Rule) {
 
 // Kind returns the rule kind: "normal", "wildcard", or "exception". It
 // returns "" for a nil rule.
-//
-// Returns:
-//   - kind (string): the rule kind.
 func (r *Rule) Kind() (kind string) {
 	if r == nil {
 		return ""
@@ -150,9 +127,6 @@ func (r *Rule) Kind() (kind string) {
 
 // Suffix returns the rule suffix without the PSL wildcard or exception
 // marker. It returns "" for a nil rule.
-//
-// Returns:
-//   - suffix (string): the rule suffix.
 func (r *Rule) Suffix() (suffix string) {
 	if r == nil {
 		return ""
@@ -163,9 +137,6 @@ func (r *Rule) Suffix() (suffix string) {
 
 // Private reports whether the rule belongs to the PSL private section. It
 // returns false for a nil rule.
-//
-// Returns:
-//   - private (bool): whether the rule is a private-section rule.
 func (r *Rule) Private() (private bool) {
 	if r == nil {
 		return false
@@ -176,9 +147,6 @@ func (r *Rule) Private() (private bool) {
 
 // String returns the canonical PSL text for the rule: the value prefixed with
 // "!" for an exception or "*." for a wildcard. It returns "" for a nil rule.
-//
-// Returns:
-//   - rule (string): the canonical rule text.
 func (r *Rule) String() (rule string) {
 	if r == nil {
 		return ""
@@ -195,12 +163,6 @@ func (r *Rule) String() (rule string) {
 }
 
 // match reports whether r applies to host.
-//
-// Parameters:
-//   - host (string): the lowercase hostname to match.
-//
-// Returns:
-//   - matches (bool): whether the rule applies.
 func (r *Rule) match(host string) (matches bool) {
 	left := strings.TrimSuffix(host, r.value)
 
@@ -212,13 +174,6 @@ func (r *Rule) match(host string) (matches bool) {
 }
 
 // Decompose splits host into the labels left of the public suffix and the suffix itself.
-//
-// Parameters:
-//   - host (string): the lowercase hostname to split.
-//
-// Returns:
-//   - left (string): the labels before the public suffix.
-//   - suffix (string): the public suffix.
 func (r *Rule) Decompose(host string) (left, suffix string) {
 	if r == defaultRule {
 		i := strings.LastIndexByte(host, '.')

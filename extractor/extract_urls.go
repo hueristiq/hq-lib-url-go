@@ -1,25 +1,18 @@
 package extractor
 
 import (
-	"errors"
 	"fmt"
 	"html"
 	"net/url"
 	"path"
 	"regexp"
 	"strings"
+
+	hqgoerrors "github.com/hueristiq/hq-lib-errors-go"
 )
 
 // ExtractURLs is the one-call form of [Extractor.ExtractURLs] using the default
 // extractor configured by ofs.
-//
-// Parameters:
-//   - text (string): the text to search.
-//   - ofs (...OptionFunc): extractor configuration options.
-//
-// Returns:
-//   - urls ([]string): the cleaned URLs found, in order of appearance.
-//   - err (error): non-nil when the extraction pattern cannot be compiled.
 func ExtractURLs(text string, ofs ...OptionFunc) (urls []string, err error) {
 	extractor, err := New(ofs...)
 	if err != nil {
@@ -36,12 +29,6 @@ func ExtractURLs(text string, ofs ...OptionFunc) (urls []string, err error) {
 // URLs.
 //
 // The extraction pattern is compiled once by [New].
-//
-// Parameters:
-//   - text (string): the text to search.
-//
-// Returns:
-//   - urls ([]string): the cleaned URLs found, in order of appearance.
 func (e *Extractor) ExtractURLs(text string) (urls []string) {
 	for _, indexes := range e.regexp.FindAllStringIndex(text, -1) {
 		start := indexes[0]
@@ -73,14 +60,6 @@ func (e *Extractor) ExtractURLs(text string) (urls []string) {
 // JavaScript-unescaped form, deduplicating the combined result. It is the
 // scanner entry point for JSON, JavaScript, and HTML bodies that may carry
 // escaped URLs.
-//
-// Parameters:
-//   - text (string): the text to search.
-//   - ofs (...OptionFunc): extractor configuration options.
-//
-// Returns:
-//   - urls ([]string): the unique URLs found, in order of first appearance.
-//   - err (error): non-nil when the extraction pattern cannot be compiled.
 func ExtractURLsAll(text string, ofs ...OptionFunc) (urls []string, err error) {
 	extractor, err := New(ofs...)
 	if err != nil {
@@ -113,14 +92,6 @@ func ExtractURLsAll(text string, ofs ...OptionFunc) (urls []string, err error) {
 // ExtractCollapsedURLs extracts URLs from JavaScript string-literal groups
 // whose concatenations or template interpolations were collapsed by
 // [JSLiteralGroups].
-//
-// Parameters:
-//   - text (string): the JavaScript text to scan.
-//   - ofs (...OptionFunc): extractor configuration options.
-//
-// Returns:
-//   - urls ([]string): the URLs found in the collapsed literals.
-//   - err (error): non-nil when the extraction pattern cannot be compiled.
 func ExtractCollapsedURLs(text string, ofs ...OptionFunc) (urls []string, err error) {
 	extractor, err := New(ofs...)
 	if err != nil {
@@ -148,17 +119,9 @@ func ExtractCollapsedURLs(text string, ofs ...OptionFunc) (urls []string, err er
 // order and applying the same boundary checks as [Extractor.ExtractURLs]. The
 // domain is matched literally; call [NormalizeHost] first when the input may be
 // a Unicode or mixed-case name.
-//
-// Parameters:
-//   - text (string): the text to search.
-//   - domain (string): the parent domain to match.
-//
-// Returns:
-//   - subdomains ([]string): the matching hosts.
-//   - err (error): non-nil when domain is empty or the pattern cannot compile.
 func ExtractSubdomains(text, domain string) (subdomains []string, err error) {
 	if domain == "" {
-		err = errors.New("extractor.ExtractSubdomains: domain is empty")
+		err = hqgoerrors.New("domain is empty")
 
 		return
 	}
@@ -168,7 +131,7 @@ func ExtractSubdomains(text, domain string) (subdomains []string, err error) {
 		regexp.QuoteMeta(domain),
 	))
 	if err != nil {
-		err = fmt.Errorf("extractor.ExtractSubdomains: %w", err)
+		err = hqgoerrors.Stack(err)
 
 		return
 	}
@@ -195,12 +158,6 @@ func ExtractSubdomains(text, domain string) (subdomains []string, err error) {
 
 // splitGluedURLs splits a match that contains several URLs joined by a
 // source-code delimiter (",", ";", or "|") into individual URLs.
-//
-// Parameters:
-//   - match (string): the raw match.
-//
-// Returns:
-//   - urls ([]string): the individual URLs.
 func splitGluedURLs(match string) (urls []string) {
 	glue := gluedSchemeIndexes(match)
 
@@ -234,12 +191,6 @@ func splitGluedURLs(match string) (urls []string) {
 
 // trimGluedColumns cuts source-code syntax that the path pattern greedily
 // includes after a URL.
-//
-// Parameters:
-//   - value (string): the candidate URL.
-//
-// Returns:
-//   - trimmed (string): the cleaned URL.
 func trimGluedColumns(value string) (trimmed string) {
 	trimmed = trimCodeGlue(value)
 
@@ -256,12 +207,6 @@ func trimGluedColumns(value string) (trimmed string) {
 
 // trimCodeGlue cuts quotes, commas, and trailing source-code columns from a
 // candidate URL.
-//
-// Parameters:
-//   - value (string): the candidate URL.
-//
-// Returns:
-//   - trimmed (string): the cleaned URL.
 func trimCodeGlue(value string) (trimmed string) {
 	trimmed = value
 
@@ -286,12 +231,6 @@ func trimCodeGlue(value string) (trimmed string) {
 }
 
 // firstQuoteComma returns the index of a quote adjacent to a comma, or -1.
-//
-// Parameters:
-//   - value (string): the text to inspect.
-//
-// Returns:
-//   - index (int): the position, or -1 when absent.
 func firstQuoteComma(value string) (index int) {
 	index = -1
 
@@ -309,12 +248,6 @@ func firstQuoteComma(value string) (index int) {
 
 // isSimpleColumn reports whether column looks like a source-code identifier or
 // numeric column rather than URL path text.
-//
-// Parameters:
-//   - column (string): the trailing column.
-//
-// Returns:
-//   - simple (bool): true for letters, digits, "_", and "-".
 func isSimpleColumn(column string) (simple bool) {
 	if column == "" {
 		return false
@@ -335,12 +268,6 @@ func isSimpleColumn(column string) (simple bool) {
 }
 
 // endsLikeURL reports whether value ends like a complete URL path.
-//
-// Parameters:
-//   - value (string): the candidate URL.
-//
-// Returns:
-//   - ends (bool): true when the path ends with "/" or has an extension.
 func endsLikeURL(value string) (ends bool) {
 	if strings.HasSuffix(value, "/") {
 		return true
@@ -358,15 +285,6 @@ func endsLikeURL(value string) (ends bool) {
 // the percent-encoded slash in "%2F". The match must be directly preceded by
 // '%'; a remainder that is empty or starts with a dot is not a recoverable
 // hostname and is dropped.
-//
-// Parameters:
-//   - text (string): the full text.
-//   - start (int): the match start offset in text.
-//   - value (string): the raw match.
-//
-// Returns:
-//   - trimmed (string): the cleaned match.
-//   - ok (bool): false when the match is not a recoverable hostname.
 func trimEncodedSlashPrefix(text string, start int, value string) (trimmed string, ok bool) {
 	if start == 0 || text[start-1] != '%' || len(value) < 3 || !strings.EqualFold(value[:2], "2f") {
 		return value, true
@@ -382,12 +300,6 @@ func trimEncodedSlashPrefix(text string, start int, value string) (trimmed strin
 }
 
 // isHostLabelCharacter reports whether character can continue a host label.
-//
-// Parameters:
-//   - character (byte): the byte to inspect.
-//
-// Returns:
-//   - ok (bool): true for letters, digits, ".", "-", and "_".
 func isHostLabelCharacter(character byte) (ok bool) {
 	switch {
 	case character >= 'a' && character <= 'z', character >= 'A' && character <= 'Z', character >= '0' && character <= '9', character == '.', character == '-', character == '_':
@@ -399,12 +311,6 @@ func isHostLabelCharacter(character byte) (ok bool) {
 
 // isGlueDelimiter reports whether character can glue two URLs together in
 // source text.
-//
-// Parameters:
-//   - character (byte): the byte to inspect.
-//
-// Returns:
-//   - ok (bool): true for ",", ";", and "|".
 func isGlueDelimiter(character byte) (ok bool) {
 	return character == ',' || character == ';' || character == '|'
 }
@@ -412,13 +318,6 @@ func isGlueDelimiter(character byte) (ok bool) {
 // gluedSchemeIndexes returns the offsets of the delimiters in match that are
 // directly followed by an "http://" or "https://" scheme — the points where a
 // new URL begins inside a glued row.
-//
-// Parameters:
-//   - match (string): the raw match to scan.
-//
-// Returns:
-//   - indexes ([]int): the delimiter offsets, in ascending order; nil when the
-//     match holds a single URL.
 func gluedSchemeIndexes(match string) (indexes []int) {
 	for i := 0; i < len(match); i++ {
 		if !isGlueDelimiter(match[i]) {
@@ -446,13 +345,6 @@ func gluedSchemeIndexes(match string) (indexes []int) {
 // gluedStatusIndex returns the offset of the last delimiter in match that is
 // followed by a three-digit HTTP status code (and another delimiter or the end
 // of the match) — the point where an access-log row stops being a URL.
-//
-// Parameters:
-//   - match (string): the raw match to scan.
-//
-// Returns:
-//   - index (int): the delimiter offset, or -1 when no status column is glued
-//     on.
 func gluedStatusIndex(match string) (index int) {
 	index = -1
 
@@ -486,13 +378,6 @@ func gluedStatusIndex(match string) (index int) {
 // gluedMethodIndex returns the offset of the last delimiter in match that is
 // followed by what looks like an HTTP method — two to eight uppercase letters —
 // the point where an access-log row stops being a URL.
-//
-// Parameters:
-//   - match (string): the raw match to scan.
-//
-// Returns:
-//   - index (int): the delimiter offset, or -1 when no method column is glued
-//     on.
 func gluedMethodIndex(match string) (index int) {
 	index = strings.LastIndexAny(match, ",;|")
 	if index < 0 {

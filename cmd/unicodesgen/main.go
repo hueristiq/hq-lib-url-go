@@ -7,7 +7,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -15,6 +14,8 @@ import (
 	"sync"
 	"text/template"
 	"unicode"
+
+	hqgoerrors "github.com/hueristiq/hq-lib-errors-go"
 )
 
 // unicodesTemplate renders the generated unicodes source file.
@@ -56,18 +57,11 @@ func main() {
 }
 
 // generate renders the Unicode character sets into output.
-//
-// Parameters:
-//   - output (string): the path of the generated Go file.
-//
-// Returns:
-//   - err (error): non-nil when the file cannot be created or the template cannot be
-//     executed.
 func generate(output string) (err error) {
 	log.Printf("Generating %s...\n", output)
 
 	if err = writeUnicode(output); err != nil {
-		return fmt.Errorf("failed to generate unicodes: %w", err)
+		return hqgoerrors.Wrap(err, "failed to generate unicodes")
 	}
 
 	log.Println("Unicodes file generated successfully.")
@@ -76,10 +70,6 @@ func generate(output string) (err error) {
 }
 
 // visit applies fn to every rune in the Unicode range table rt.
-//
-// Parameters:
-//   - rt (*unicode.RangeTable): the range table to walk.
-//   - fn (func(rune)): the callback invoked for each rune.
 func visit(rt *unicode.RangeTable, fn func(rune)) {
 	for _, r16 := range rt.R16 {
 		for r := rune(r16.Lo); r <= rune(r16.Hi); r += rune(r16.Stride) {
@@ -95,13 +85,6 @@ func visit(rt *unicode.RangeTable, fn func(rune)) {
 }
 
 // writeUnicode generates the Unicode ranges and writes them to output.
-//
-// Parameters:
-//   - output (string): the path of the generated Go file.
-//
-// Returns:
-//   - err (error): non-nil when the file cannot be created or the template cannot be
-//     executed.
 func writeUnicode(output string) (err error) {
 	// rfc3987Ranges contains the ranges of valid code points specified by [RFC 3987](https://www.rfc-editor.org/info/rfc3987/).
 	rfc3987Ranges := [][2]rune{
@@ -219,21 +202,21 @@ func writeUnicode(output string) (err error) {
 
 	file, err := os.Create(output) //nolint:gosec // G304: output is a local CLI argument
 	if err != nil {
-		return fmt.Errorf("failed to create output file: %w", err)
+		return hqgoerrors.Wrap(err, "failed to create output file")
 	}
 
 	defer func() { _ = file.Close() }()
 
 	parsed, err := unicodesTemplate()
 	if err != nil {
-		return fmt.Errorf("failed to parse template: %w", err)
+		return hqgoerrors.Wrap(err, "failed to parse template")
 	}
 
 	if err = parsed.Execute(file, map[string]string{
 		"withPunc":    strconv.Quote(allowedUcsChar),
 		"withoutPunc": strconv.Quote(allowedUcsCharMinusPunc),
 	}); err != nil {
-		return fmt.Errorf("failed to execute template: %w", err)
+		return hqgoerrors.Wrap(err, "failed to execute template")
 	}
 
 	return nil

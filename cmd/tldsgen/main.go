@@ -9,7 +9,6 @@ import (
 	"bufio"
 	"context"
 	"flag"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -17,6 +16,8 @@ import (
 	"strings"
 	"sync"
 	"text/template"
+
+	hqgoerrors "github.com/hueristiq/hq-lib-errors-go"
 )
 
 // tldsTemplate renders the generated TLD source file.
@@ -70,28 +71,22 @@ func main() {
 }
 
 // generate builds the merged TLD list and writes the generated source to output.
-//
-// Parameters:
-//   - output (string): the path of the generated Go file.
-//
-// Returns:
-//   - err (error): non-nil when a source cannot be read or the file cannot be written.
 func generate(output string) (err error) {
 	log.Printf("Generating %s...\n", output)
 
 	textTLDs, err := getTLDsFromText()
 	if err != nil {
-		return fmt.Errorf("failed to get TLDs from text: %w", err)
+		return hqgoerrors.Wrap(err, "failed to get TLDs from text")
 	}
 
 	ianaTLDs, err := getTLDsFromIANA()
 	if err != nil {
-		return fmt.Errorf("failed to get TLDs from IANA: %w", err)
+		return hqgoerrors.Wrap(err, "failed to get TLDs from IANA")
 	}
 
 	effectiveTLDs, err := getEffectiveTLDsFromPublicSuffix()
 	if err != nil {
-		return fmt.Errorf("failed to get effective TLDs from the Public Suffix List: %w", err)
+		return hqgoerrors.Wrap(err, "failed to get effective TLDs from the Public Suffix List")
 	}
 
 	tlds := make([]string, 0, len(textTLDs)+len(ianaTLDs)+len(effectiveTLDs))
@@ -104,7 +99,7 @@ func generate(output string) (err error) {
 	tlds = slices.Compact(tlds)
 
 	if err = writeTLDsToFile(tlds, output); err != nil {
-		return fmt.Errorf("failed to write TLDs to file: %w", err)
+		return hqgoerrors.Wrap(err, "failed to write TLDs to file")
 	}
 
 	log.Println("TLDs file generated successfully.")
@@ -113,14 +108,10 @@ func generate(output string) (err error) {
 }
 
 // getTLDsFromText reads the curated TLD list from tldsTextPath.
-//
-// Returns:
-//   - TLDs ([]string): the non-empty lines of the curated list.
-//   - err (error): non-nil when the file cannot be opened or read.
 func getTLDsFromText() (TLDs []string, err error) {
 	file, err := os.Open(tldsTextPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open TLDs file: %w", err)
+		return nil, hqgoerrors.Wrap(err, "failed to open TLDs file")
 	}
 
 	defer func() { _ = file.Close() }()
@@ -138,7 +129,7 @@ func getTLDsFromText() (TLDs []string, err error) {
 	}
 
 	if err = scanner.Err(); err != nil {
-		return nil, fmt.Errorf("scanner error: %w", err)
+		return nil, hqgoerrors.Wrap(err, "scanner error")
 	}
 
 	return TLDs, nil
@@ -147,25 +138,21 @@ func getTLDsFromText() (TLDs []string, err error) {
 // getTLDsFromIANA downloads the IANA TLD list.
 //
 // Comment lines and punycode (xn--) entries are skipped.
-//
-// Returns:
-//   - TLDs ([]string): the lowercased IANA TLDs.
-//   - err (error): non-nil when the list cannot be fetched or read.
 func getTLDsFromIANA() (TLDs []string, err error) {
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, ianaTLDURL, http.NoBody)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build the IANA TLDs request: %w", err)
+		return nil, hqgoerrors.Wrap(err, "failed to build the IANA TLDs request")
 	}
 
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch IANA TLDs: %w", err)
+		return nil, hqgoerrors.Wrap(err, "failed to fetch IANA TLDs")
 	}
 
 	defer func() { _ = res.Body.Close() }()
 
 	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected HTTP status %s while fetching IANA TLDs", res.Status)
+		return nil, hqgoerrors.Errorf("unexpected HTTP status %s while fetching IANA TLDs", res.Status)
 	}
 
 	scanner := bufio.NewScanner(res.Body)
@@ -186,7 +173,7 @@ func getTLDsFromIANA() (TLDs []string, err error) {
 	}
 
 	if err = scanner.Err(); err != nil {
-		return nil, fmt.Errorf("scanner error: %w", err)
+		return nil, hqgoerrors.Wrap(err, "scanner error")
 	}
 
 	return TLDs, nil
@@ -197,25 +184,21 @@ func getTLDsFromIANA() (TLDs []string, err error) {
 // The PSL is only approximated: wildcard rules ("*." prefixes) are treated as plain
 // suffixes, and exception rules ("!" prefixes) are ignored entirely, so the generated
 // list may both over- and under-approximate the true public suffix set.
-//
-// Returns:
-//   - eTLDs ([]string): the effective TLDs from the ICANN section.
-//   - err (error): non-nil when the list cannot be fetched or read.
 func getEffectiveTLDsFromPublicSuffix() (eTLDs []string, err error) {
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, publicSuffixURL, http.NoBody)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build the Public Suffix List request: %w", err)
+		return nil, hqgoerrors.Wrap(err, "failed to build the Public Suffix List request")
 	}
 
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch the Public Suffix List: %w", err)
+		return nil, hqgoerrors.Wrap(err, "failed to fetch the Public Suffix List")
 	}
 
 	defer func() { _ = res.Body.Close() }()
 
 	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected HTTP status %s while fetching the Public Suffix List", res.Status)
+		return nil, hqgoerrors.Errorf("unexpected HTTP status %s while fetching the Public Suffix List", res.Status)
 	}
 
 	scanner := bufio.NewScanner(res.Body)
@@ -246,25 +229,17 @@ func getEffectiveTLDsFromPublicSuffix() (eTLDs []string, err error) {
 	}
 
 	if err = scanner.Err(); err != nil {
-		return nil, fmt.Errorf("scanner error: %w", err)
+		return nil, hqgoerrors.Wrap(err, "scanner error")
 	}
 
 	return eTLDs, nil
 }
 
 // writeTLDsToFile renders TLDs and writes the result to output.
-//
-// Parameters:
-//   - TLDs ([]string): the TLDs to emit.
-//   - TLDsFile (string): the path of the generated Go file.
-//
-// Returns:
-//   - err (error): non-nil when the file cannot be created or the template cannot be
-//     executed.
 func writeTLDsToFile(TLDs []string, TLDsFile string) (err error) {
 	file, err := os.Create(TLDsFile) //nolint:gosec // G304: output is a local CLI argument
 	if err != nil {
-		return fmt.Errorf("failed to create output file: %w", err)
+		return hqgoerrors.Wrap(err, "failed to create output file")
 	}
 
 	defer func() { _ = file.Close() }()
@@ -277,11 +252,11 @@ func writeTLDsToFile(TLDs []string, TLDsFile string) (err error) {
 
 	parsed, err := tldsTemplate()
 	if err != nil {
-		return fmt.Errorf("failed to parse template: %w", err)
+		return hqgoerrors.Wrap(err, "failed to parse template")
 	}
 
 	if err = parsed.Execute(file, data); err != nil {
-		return fmt.Errorf("failed to execute template: %w", err)
+		return hqgoerrors.Wrap(err, "failed to execute template")
 	}
 
 	return nil

@@ -21,6 +21,8 @@ import (
 	"time"
 
 	"golang.org/x/net/idna"
+
+	hqgoerrors "github.com/hueristiq/hq-lib-errors-go"
 )
 
 const (
@@ -55,13 +57,6 @@ func main() {
 }
 
 // run fetches the Public Suffix List, renders the rule table, and writes it to output.
-//
-// Parameters:
-//   - output (string): the path of the generated Go file.
-//
-// Returns:
-//   - err (error): non-nil when the list cannot be fetched or the file cannot be
-//     written.
 func run(output string) (err error) {
 	rules, version, commit, err := fetchRules()
 	if err != nil {
@@ -74,7 +69,7 @@ func run(output string) (err error) {
 	}
 
 	if err = os.WriteFile(output, data, 0o600); err != nil {
-		return fmt.Errorf("write %s: %w", output, err)
+		return hqgoerrors.Wrapf(err, "write %s", output)
 	}
 
 	log.Printf("generated %s with %d rules (PSL %s, commit %s)", output, len(rules), version, commit)
@@ -86,29 +81,23 @@ func run(output string) (err error) {
 //
 // Internationalized rules are emitted twice: once in their original form and once as
 // an A-label, so hosts in either notation match.
-//
-// Returns:
-//   - rules ([]rule): the parsed rules, sorted by value and kind.
-//   - version (string): the list's VERSION header, when present.
-//   - commit (string): the list's COMMIT header, when present.
-//   - err (error): non-nil when the list cannot be fetched or read.
 func fetchRules() (rules []rule, version, commit string, err error) {
 	client := &http.Client{Timeout: httpTimeout}
 
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, pslURL, http.NoBody)
 	if err != nil {
-		return nil, "", "", fmt.Errorf("build PSL request: %w", err)
+		return nil, "", "", hqgoerrors.Wrap(err, "build PSL request")
 	}
 
 	res, err := client.Do(req)
 	if err != nil {
-		return nil, "", "", fmt.Errorf("fetch PSL: %w", err)
+		return nil, "", "", hqgoerrors.Wrap(err, "fetch PSL")
 	}
 
 	defer func() { _ = res.Body.Close() }()
 
 	if res.StatusCode != http.StatusOK {
-		return nil, "", "", fmt.Errorf("fetch PSL: unexpected status %s", res.Status)
+		return nil, "", "", hqgoerrors.Errorf("fetch PSL: unexpected status %s", res.Status)
 	}
 
 	seen := make(map[string]struct{})
@@ -165,7 +154,7 @@ func fetchRules() (rules []rule, version, commit string, err error) {
 		if !isASCII(value) {
 			asciiValue, convertErr := idna.ToASCII(value)
 			if convertErr != nil {
-				return nil, "", "", fmt.Errorf("convert %q: %w", line, convertErr)
+				return nil, "", "", hqgoerrors.Wrapf(convertErr, "convert %q", line)
 			}
 
 			if asciiValue != value {
@@ -191,7 +180,7 @@ func fetchRules() (rules []rule, version, commit string, err error) {
 	}
 
 	if err = scanner.Err(); err != nil {
-		return nil, "", "", fmt.Errorf("read PSL: %w", err)
+		return nil, "", "", hqgoerrors.Wrap(err, "read PSL")
 	}
 
 	sort.Slice(rules, func(i, j int) bool {
@@ -206,15 +195,6 @@ func fetchRules() (rules []rule, version, commit string, err error) {
 }
 
 // render formats the rules as the source of the generated rules file.
-//
-// Parameters:
-//   - rules ([]rule): the rules to render.
-//   - version (string): the Public Suffix List VERSION header.
-//   - commit (string): the Public Suffix List COMMIT header.
-//
-// Returns:
-//   - data ([]byte): the gofmt-ed source of the generated file.
-//   - err (error): non-nil when a rule kind is unknown or formatting fails.
 func render(rules []rule, version, commit string) (data []byte, err error) {
 	kindNames := map[string]string{
 		"normal":    "pslNormal",
@@ -233,7 +213,7 @@ func render(rules []rule, version, commit string) (data []byte, err error) {
 	for _, r := range rules {
 		name, ok := kindNames[r.kind]
 		if !ok {
-			return nil, fmt.Errorf("unknown rule kind %q", r.kind)
+			return nil, hqgoerrors.Errorf("unknown rule kind %q", r.kind)
 		}
 
 		fmt.Fprintf(&buf, "\t{%s, %q, %d, %t},\n", name, r.value, r.labels, r.private)
@@ -243,19 +223,13 @@ func render(rules []rule, version, commit string) (data []byte, err error) {
 
 	data, err = format.Source(buf.Bytes())
 	if err != nil {
-		return nil, fmt.Errorf("format rules: %w", err)
+		return nil, hqgoerrors.Wrap(err, "format rules")
 	}
 
 	return data, nil
 }
 
 // isASCII reports whether value contains only ASCII bytes.
-//
-// Parameters:
-//   - value (string): the string to inspect.
-//
-// Returns:
-//   - ascii (bool): true when every byte of value is below 0x80.
 func isASCII(value string) (ascii bool) {
 	for i := range len(value) {
 		if value[i] >= 0x80 {

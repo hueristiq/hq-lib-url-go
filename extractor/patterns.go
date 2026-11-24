@@ -215,12 +215,6 @@ var knownTLDPatternOnce = sync.OnceValue(func() string {
 // anyOf is a helper function that constructs a non-capturing regex pattern from a list of strings.
 // It joins the provided strings with a "|" (alternation) operator and escapes each string to ensure
 // special regex characters are treated literally.
-//
-// Parameters:
-//   - strs (...string): a variadic list of strings to be included in the pattern.
-//
-// Returns:
-//   - pattern (string): a regex pattern that matches any one of the provided strings.
 func anyOf(strs ...string) (pattern string) {
 	var b strings.Builder
 
@@ -244,14 +238,6 @@ func anyOf(strs ...string) (pattern string) {
 // splitTLDs partitions list into TLDs that end in an ASCII word character and TLDs that
 // do not. The split is deterministic: it inspects each entry on its own, so it never
 // depends on the list's sort order.
-//
-// Parameters:
-//   - list ([]string): the TLDs to partition.
-//
-// Returns:
-//   - bounded ([]string): TLDs ending in an ASCII word character, safe to follow with a
-//     "\b" word boundary.
-//   - unbounded ([]string): TLDs ending in a non-word or non-ASCII character.
 func splitTLDs(list []string) (bounded, unbounded []string) {
 	for _, tld := range list {
 		if hasASCIIWordEnding(tld) {
@@ -265,12 +251,6 @@ func splitTLDs(list []string) (bounded, unbounded []string) {
 }
 
 // hasASCIIWordEnding reports whether s ends in an ASCII word character ([0-9A-Za-z_]).
-//
-// Parameters:
-//   - s (string): the string to inspect.
-//
-// Returns:
-//   - ok (bool): true when the last byte of s is an ASCII word character.
 func hasASCIIWordEnding(s string) (ok bool) {
 	if s == "" {
 		return false

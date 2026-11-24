@@ -32,10 +32,6 @@ type LiteralGroup struct {
 
 // Collapsed returns the concatenation of the group's literal pieces with
 // ExpressionPlaceholder standing in for every unknown expression.
-//
-// Returns:
-//   - collapsed (string): the concatenated literal pieces, with
-//     [ExpressionPlaceholder] in place of each unknown expression.
 func (g LiteralGroup) Collapsed() (collapsed string) {
 	var out strings.Builder
 
@@ -62,12 +58,6 @@ func (g LiteralGroup) Collapsed() (collapsed string) {
 //
 // The scanner is text-based, not a parser: division expressions, regex
 // literals, and unquoted markup may occasionally be read as literals.
-//
-// Parameters:
-//   - text (string): the JavaScript source to scan.
-//
-// Returns:
-//   - groups ([]LiteralGroup): the concatenation groups found in text.
 func JSLiteralGroups(text string) (groups []LiteralGroup) {
 	groups = make([]LiteralGroup, 0)
 
@@ -94,18 +84,6 @@ func JSLiteralGroups(text string) (groups []LiteralGroup) {
 
 // scanGroup scans the concatenation group starting with the literal opening
 // at start.
-//
-// Parameters:
-//   - text (string): the source text to scan.
-//   - start (int): the byte offset of the first literal's opening quote.
-//
-// Returns:
-//   - group (LiteralGroup): the scanned group, with End just past the last
-//     literal.
-//   - nested ([]LiteralGroup): literal groups found inside unknown
-//     expressions skipped by this group.
-//   - scanEnd (int): the offset just past the last operand consumed; callers
-//     advance to it so nested literals are not scanned twice.
 func scanGroup(text string, start int) (group LiteralGroup, nested []LiteralGroup, scanEnd int) {
 	pieces, hasExpr, joins, litEnd := scanLiteral(text, start)
 
@@ -174,15 +152,6 @@ func scanGroup(text string, start int) (group LiteralGroup, nested []LiteralGrou
 // literalGroupsWithin returns the literal groups found in text[start:end],
 // with their offsets rebased to text. It recovers literals nested inside an
 // unknown expression that scanGroup skips over.
-//
-// Parameters:
-//   - text (string): the source text to scan.
-//   - start (int): the byte offset where the expression starts.
-//   - end (int): the byte offset where the expression ends.
-//
-// Returns:
-//   - groups ([]LiteralGroup): the groups found in the span, with offsets
-//     relative to text.
 func literalGroupsWithin(text string, start, end int) (groups []LiteralGroup) {
 	if start >= end {
 		return nil
@@ -200,18 +169,6 @@ func literalGroupsWithin(text string, start, end int) (groups []LiteralGroup) {
 
 // scanLiteral scans the literal whose opening quote is at start and returns
 // its decoded pieces and the offset just past the literal's end.
-//
-// Parameters:
-//   - text (string): the source text to scan.
-//   - start (int): the byte offset of the literal's opening quote.
-//
-// Returns:
-//   - pieces ([]string): the escape-decoded contents, one entry per literal
-//     segment in the literal.
-//   - hasExpr (bool): whether a template interpolation contributes a segment.
-//   - joins ([]bool): per piece, whether the join before it is an unknown
-//     expression.
-//   - end (int): the byte offset just past the literal's closing quote.
 func scanLiteral(text string, start int) (pieces []string, hasExpr bool, joins []bool, end int) {
 	if text[start] == '`' {
 		return scanTemplate(text, start)
@@ -225,18 +182,6 @@ func scanLiteral(text string, start int) (pieces []string, hasExpr bool, joins [
 // scanQuotedString scans a '...' or "..." literal. Quoted strings cannot span
 // lines in JavaScript; an unescaped line break ends the scan so malformed
 // input does not swallow the rest of the document.
-//
-// Parameters:
-//   - text (string): the source text to scan.
-//   - start (int): the byte offset of the literal's opening quote.
-//   - quote (byte): the quote character that terminates the literal.
-//
-// Returns:
-//   - pieces ([]string): the escape-decoded contents, as a single piece.
-//   - joins ([]bool): a single false entry, since a quoted string has one
-//     segment.
-//   - end (int): the byte offset just past the closing quote, the line break
-//     that ended the scan, or the end of the text.
 func scanQuotedString(text string, start int, quote byte) (pieces []string, joins []bool, end int) {
 	pos := start + 1
 	chunkStart := pos
@@ -268,19 +213,6 @@ func scanQuotedString(text string, start int, quote byte) (pieces []string, join
 
 // scanTemplate scans a `...` template literal, splitting it at ${...}
 // interpolations. Each interpolation sets hasExpr; its content is skipped.
-//
-// Parameters:
-//   - text (string): the source text to scan.
-//   - start (int): the byte offset of the template's opening backtick.
-//
-// Returns:
-//   - pieces ([]string): the escape-decoded contents, one entry per segment
-//     between interpolations.
-//   - hasExpr (bool): whether the template contains an interpolation.
-//   - joins ([]bool): per piece, whether the join before it is an
-//     interpolation.
-//   - end (int): the byte offset just past the closing backtick, or the end of
-//     the text.
 func scanTemplate(text string, start int) (pieces []string, hasExpr bool, joins []bool, end int) {
 	pos := start + 1
 	chunkStart := pos
@@ -319,14 +251,6 @@ func scanTemplate(text string, start int) (pieces []string, hasExpr bool, joins 
 // skipInterpolation skips the ${...} body starting just past the opening
 // brace and returns the offset just past the matching '}'. Nested strings,
 // templates, and comments are skipped so their braces do not count.
-//
-// Parameters:
-//   - text (string): the source text to scan.
-//   - pos (int): the byte offset just past the interpolation's opening brace.
-//
-// Returns:
-//   - next (int): the byte offset just past the matching closing brace, or the
-//     end of the text when the brace is missing.
 func skipInterpolation(text string, pos int) (next int) {
 	depth := 1
 
@@ -360,13 +284,6 @@ func skipInterpolation(text string, pos int) (next int) {
 // skipUnknown skips the expression starting at pos and returns the offset of
 // the next '+' at the same nesting level, or of a statement boundary
 // (';', ',', a closing bracket, or a line break), or len(text).
-//
-// Parameters:
-//   - text (string): the source text to scan.
-//   - pos (int): the byte offset where the expression starts.
-//
-// Returns:
-//   - next (int): the byte offset of the boundary that ended the skip.
 func skipUnknown(text string, pos int) (next int) {
 	depth := 0
 
@@ -407,14 +324,6 @@ func skipUnknown(text string, pos int) (next int) {
 }
 
 // skipSpaceAndComments skips whitespace (including line breaks) and comments.
-//
-// Parameters:
-//   - text (string): the source text to scan.
-//   - pos (int): the byte offset where skipping starts.
-//
-// Returns:
-//   - next (int): the byte offset of the first byte that is neither whitespace
-//     nor part of a comment.
 func skipSpaceAndComments(text string, pos int) (next int) {
 	for pos < len(text) {
 		switch {
@@ -434,14 +343,6 @@ func skipSpaceAndComments(text string, pos int) (next int) {
 
 // skipLineComment returns the offset of the line break that ends the comment
 // starting at pos, or len(text) when the comment runs to the end.
-//
-// Parameters:
-//   - text (string): the source text to scan.
-//   - pos (int): the byte offset just past the comment's opening "//".
-//
-// Returns:
-//   - next (int): the byte offset of the terminating line break or of the end
-//     of the text.
 func skipLineComment(text string, pos int) (next int) {
 	for pos < len(text) && text[pos] != '\n' {
 		pos++
@@ -452,14 +353,6 @@ func skipLineComment(text string, pos int) (next int) {
 
 // skipBlockComment returns the offset just past the block comment starting at
 // pos, or len(text) when the comment is unterminated.
-//
-// Parameters:
-//   - text (string): the source text to scan.
-//   - pos (int): the byte offset just past the comment's opening "/*".
-//
-// Returns:
-//   - next (int): the byte offset just past the closing "*/" or the end of the
-//     text.
 func skipBlockComment(text string, pos int) (next int) {
 	for pos+1 < len(text) {
 		if text[pos] == '*' && text[pos+1] == '/' {
@@ -475,13 +368,6 @@ func skipBlockComment(text string, pos int) (next int) {
 // escapeWidth returns how many bytes the escape sequence starting at pos
 // (text[pos] is the backslash) occupies, so the escaped character cannot be
 // mistaken for a literal terminator.
-//
-// Parameters:
-//   - text (string): the source text to scan.
-//   - pos (int): the byte offset of the backslash.
-//
-// Returns:
-//   - width (int): the number of bytes the escape sequence occupies.
 func escapeWidth(text string, pos int) (width int) {
 	if pos+1 >= len(text) {
 		return 1
@@ -495,24 +381,11 @@ func escapeWidth(text string, pos int) (width int) {
 }
 
 // isQuote reports whether b opens a JavaScript string literal.
-//
-// Parameters:
-//   - b (byte): the byte to test.
-//
-// Returns:
-//   - quote (bool): true for ', ", or the backtick.
 func isQuote(b byte) (quote bool) {
 	return b == '\'' || b == '"' || b == '`'
 }
 
 // isSpace reports whether b is JavaScript whitespace.
-//
-// Parameters:
-//   - b (byte): the byte to test.
-//
-// Returns:
-//   - space (bool): true for space, tab, line feed, carriage return, vertical
-//     tab, and form feed.
 func isSpace(b byte) (space bool) {
 	switch b {
 	case ' ', '\t', '\n', '\r', '\v', '\f':
